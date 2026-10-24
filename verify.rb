@@ -4,7 +4,7 @@ require "open3"
 require "tmpdir"
 require "json"
 
-FILES = %w[q_syntax.yml q_lib.yml q_oop.yml q_syntax2.yml q_lib2.yml q_oop2.yml q_extra.yml].map { |f| File.join(__dir__, f) }
+FILES = %w[q_syntax q_lib q_oop q_syntax2 q_lib2 q_oop2 q_extra].map { |f| File.join(__dir__, "src/data/questions", "#{f}.yml") }
 BLANK = "__(1)__"
 
 def norm(s)
