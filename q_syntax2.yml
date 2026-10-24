@@ -1,0 +1,898 @@
+# 文法（追加分）
+- cat: 文法
+  topic: 演算子の優先順位（**）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p(-2 ** 2)
+    p 2 ** 3 ** 2
+  choices: ["-4\n512", "4\n512", "-4\n64", "4\n64"]
+  answer: [0]
+  verify: output
+  exp: |
+    `**` は単項マイナスより優先順位が高いので、`-2 ** 2` は `-(2 ** 2)` となり `-4` です。
+
+    また `**` は右結合なので、`2 ** 3 ** 2` は `2 ** (3 ** 2)` = `2 ** 9` = 512 です。
+
+- cat: 文法
+  topic: 論理演算子の戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p(1 && 2)
+    p(nil && 1)
+    p(false || nil)
+    p(nil || "x")
+  choices:
+    - |-
+      2
+      nil
+      nil
+      "x"
+    - |-
+      true
+      false
+      false
+      true
+    - |-
+      1
+      nil
+      false
+      "x"
+    - |-
+      2
+      false
+      nil
+      "x"
+  answer: [0]
+  verify: output
+  exp: |
+    `&&` と `||` は `true` / `false` ではなく、最後に評価したオペランドの値を返します。
+
+    - `a && b` … `a` が偽ならその値（`nil`）、真なら `b` を返す
+    - `a || b` … `a` が真ならその値、偽なら `b` を返す（`false || nil` は `nil`）
+
+- cat: 文法
+  topic: unless
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 5
+    unless x > 3
+      puts "small"
+    else
+      puts "big"
+    end
+    puts "even" unless x.odd?
+    puts "end"
+  choices: ["big\nend", "small\nend", "big\neven\nend", "small\neven\nend"]
+  answer: [0]
+  verify: output
+  exp: |
+    `unless` は条件が偽のときに本体を実行します。`else` も書けます（`elsif` は書けません）。
+
+    `x > 3` は真なので `else` 側の `big` が出力されます。後置の `unless x.odd?` は、`x` が奇数なので実行されません。
+
+- cat: 文法
+  topic: 後置while
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    i = 10
+    begin
+      i += 1
+    end while i < 5
+    p i
+    j = 10
+    j += 1 while j < 5
+    p j
+  choices: ["11\n10", "10\n10", "11\n11", "5\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    `begin ... end while 条件` は、本体を先に1回実行してから条件を判定します（do-while）。そのため条件が最初から偽でも1回実行され、`i` は 11 になります。
+
+    一方、`式 while 条件` の形は先に条件を判定するので、`j += 1` は一度も実行されません。
+
+- cat: 文法
+  topic: until
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    n = 0
+    until n >= 3
+      print n
+      n += 1
+    end
+  choices: ['012', '0123', '123', '!何も出力されない']
+  answer: [0]
+  verify: output
+  exp: |
+    `until` は条件が偽の間くり返します（`while` の逆）。`n` が 0, 1, 2 のときに出力され、3 になった時点で条件が真になって終了します。
+
+- cat: 文法
+  topic: loopとbreak
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    i = 0
+    v = loop do
+      i += 1
+      break i * i if i > 3
+    end
+    p v
+  choices: ['16', '9', 'nil', '4']
+  answer: [0]
+  verify: output
+  exp: |
+    `loop` はブロックを無限にくり返すメソッドです。`break` に値を渡すと、それが `loop` の戻り値になります。
+
+    `i` が 4 になったとき `break 4 * 4` が実行され、`v` は 16 です。
+
+- cat: 文法
+  topic: ブロック内のnext
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = [1, 2, 3, 4].map do |x|
+      next 0 if x.even?
+      x * 10
+    end
+    p r
+  choices: ['[10, 0, 30, 0]', '[10, 30]', '[10, nil, 30, nil]', '[1, 0, 3, 0]']
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック内の `next` は、そのブロックの1回分の処理を終えて値を返します。`next 0` なら、その要素に対するブロックの戻り値は `0` です。
+
+    `map` はブロックの戻り値を集めるので、偶数は `0`、奇数は10倍になります。値を付けずに `next` だけ書くと `nil` が返ります。
+
+- cat: 文法
+  topic: case式（対象なし）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def grade(score)
+      case
+      when score >= 80 then "A"
+      when score >= 60 then "B"
+      else "C"
+      end
+    end
+    puts grade(85), grade(60), grade(59)
+  choices: ["A\nB\nC", "A\nC\nC", "B\nB\nC", "A\nA\nB"]
+  answer: [0]
+  verify: output
+  exp: |
+    `case` の後ろに対象を書かない場合、各 `when` の式がそのまま条件として評価され、最初に真になった節が実行されます。`if` / `elsif` の連続と同じ動きです。
+
+    60 は `score >= 60` を満たすので `"B"` です。
+
+- cat: 文法
+  topic: case式の戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def kind(x)
+      case x
+      when 1, 2 then "small"
+      when 3..5 then "mid"
+      end
+    end
+    p kind(2), kind(4), kind(9)
+  choices:
+    - |-
+      "small"
+      "mid"
+      nil
+    - |-
+      "small"
+      "mid"
+      ""
+    - |-
+      "small"
+      nil
+      nil
+    - '!`NoMatchingPatternError` が発生する'
+  answer: [0]
+  verify: output
+  exp: |
+    `when` にはカンマ区切りで複数の値を書けます（どれか1つに一致すればよい）。
+
+    どの `when` にも一致せず `else` もない場合、`case` 式の値は `nil` になります。エラーにはなりません（`NoMatchingPatternError` はパターンマッチ `case ... in` のときのエラーです）。
+
+- cat: 文法
+  topic: 条件演算子
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = 7
+    s = a > 5 ? (a > 6 ? "x" : "y") : "z"
+    t = (1 if false)
+    p s, t
+  choices: ["\"x\"\nnil", "\"y\"\nnil", "\"x\"\nfalse", "\"z\"\n1"]
+  answer: [0]
+  verify: output
+  exp: |
+    `条件 ? 真のときの値 : 偽のときの値` は条件演算子（三項演算子）です。入れ子にすると内側から順に評価されます。`a` は 7 なので `"x"` です。
+
+    `if` も式なので値を返します。条件が偽で `else` がない場合の値は `nil` です。
+
+- cat: 文法
+  topic: ぼっち演算子（&.）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = nil
+    p s&.length
+    p s.to_s.length
+    t = "abc"
+    p t&.length
+  choices: ["nil\n0\n3", "0\n0\n3", "!1行目の `p` で `NoMethodError` が発生する", "nil\nnil\n3"]
+  answer: [0]
+  verify: output
+  exp: |
+    `&.`（safe navigation 演算子）は、レシーバが `nil` のときはメソッドを呼ばずに `nil` を返します。レシーバが `nil` 以外なら通常のメソッド呼び出しと同じです。
+
+    `nil.to_s` は空文字列 `""` なので、長さは 0 です。
+
+- cat: 文法
+  topic: defined?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 1
+    @v = 2
+    p defined?(x)
+    p defined?(y)
+    p defined?(puts)
+    p defined?(@v)
+  choices:
+    - |-
+      "local-variable"
+      nil
+      "method"
+      "instance-variable"
+    - |-
+      "local-variable"
+      false
+      "method"
+      "instance-variable"
+    - |-
+      true
+      false
+      true
+      true
+    - '!3行目で `NameError` が発生する'
+  answer: [0]
+  verify: output
+  exp: |
+    `defined?` は式が定義済みかを調べ、定義されていればその種類を表す文字列、未定義なら `nil` を返します。未定義の変数を渡してもエラーにはなりません。
+
+    ローカル変数は `"local-variable"`、メソッドは `"method"`、インスタンス変数は `"instance-variable"` です。
+
+- cat: 文法
+  topic: 文字列リテラルの連結・%q
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "Ruby" " " 'Silver'
+    puts s
+    name = "R"
+    puts %q(#{name} 'ok')
+    puts %Q(#{name} "ok")
+  choices:
+    - |-
+      Ruby Silver
+      #{name} 'ok'
+      R "ok"
+    - |-
+      Ruby Silver
+      R 'ok'
+      R "ok"
+    - |-
+      RubySilver
+      #{name} 'ok'
+      #{name} "ok"
+    - '!1行目で `SyntaxError` が発生する'
+  answer: [0]
+  verify: output
+  exp: |
+    文字列リテラルを空白をはさんで並べると、1つの文字列として連結されます（シングルとダブルの混在も可）。
+
+    `%q()` はシングルクォート相当（式展開なし）、`%Q()`（または `%()`）はダブルクォート相当（式展開あり）です。中でクォートをエスケープせずに書けるのが利点です。
+
+- cat: 文法
+  topic: 数値リテラル（Float・Rational）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1e3
+    p 3r / 2
+    p 7.fdiv(2).class
+    p 10.0 == 10
+  choices: ["1000.0\n(3/2)\nFloat\ntrue", "1000\n1.5\nFloat\ntrue", "1000.0\n1\nInteger\nfalse", "1000.0\n(3/2)\nFloat\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `1e3` は指数表記で、Float の `1000.0` です。`3r` は Rational（有理数）のリテラルで、`3r / 2` は `(3/2)` になります。
+
+    `==` は値を比べるので `10.0 == 10` は `true` です（`eql?` なら `false`）。
+
+- cat: 文法
+  topic: 自己代入（&&=）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = 5
+    b = nil
+    a &&= a + 1
+    b &&= b + 1
+    p a, b
+  choices: ["6\nnil", "6\n1", "5\nnil", "!`NoMethodError` が発生する"]
+  answer: [0]
+  verify: output
+  exp: |
+    `a &&= x` は `a && (a = x)` と同じ意味で、`a` が真のときだけ代入します。
+
+    `b` は `nil` なので右辺は評価されず、`nil + 1` によるエラーも起きません。
+
+- cat: 文法
+  topic: 多重代入（入れ替え・入れ子）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a, b = 1, 2
+    a, b = b, a
+    x, (y, z), w = 1, [2, 3], 4
+    p [a, b, y, w]
+  choices: ['[2, 1, 2, 4]', '[1, 2, 2, 4]', '[2, 1, [2, 3], 4]', '[2, 1, 2, 3]']
+  answer: [0]
+  verify: output
+  exp: |
+    多重代入では右辺がすべて評価されてから代入されるので、`a, b = b, a` で値を入れ替えられます。
+
+    左辺を `( )` で囲むと、対応する右辺の配列を分解して代入できます。`(y, z)` に `[2, 3]` が分解されて `y` は 2、`z` は 3 になります。
+
+- cat: 文法
+  topic: グローバル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    $count = 0
+    def up
+      $count += 1
+    end
+    3.times { up }
+    p $count
+  choices: ['3', '0', '!`NameError` が発生する', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `$` で始まるグローバル変数は、プログラムのどこからでも参照・変更できます。メソッドの中からも外側の値が見えるので、3回呼ぶと 3 になります。
+
+    ローカル変数（`count`）の場合は `def` の中から参照できず `NameError` になります。
+
+- cat: 文法
+  topic: ブロックの結合（{} と do...end）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2].map { |x| x * 2 }
+    p [1, 2].map do |x| x * 2 end
+  choices: ["[2, 4]\n#<Enumerator: [1, 2]:map>", "[2, 4]\n[2, 4]", "#<Enumerator: [1, 2]:map>\n[2, 4]", '!2行目で `SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `{ }` は直前のメソッド（`map`）と強く結びつきますが、`do ... end` は結びつきが弱く、外側のメソッド（`p`）に渡されます。
+
+    2行目は `p([1, 2].map) do ... end` と解釈され、`map` はブロックなしで Enumerator を返し、`p` はそれを表示します（`p` に渡されたブロックは使われません）。
+
+- cat: 文法
+  topic: ブロック引数の展開
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    pairs = [[1, 2], [3, 4]]
+    pairs.each { |a, b| print a + b, " " }
+    puts
+    pairs.each { |a| print a.inspect, " " }
+  choices: ["3 7\n[1, 2] [3, 4]", "3 7\n1 3", "[1, 2] [3, 4]\n[1, 2] [3, 4]", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック引数を2つ以上書いた場合、渡された配列は自動的に展開されて各引数に入ります（`a` に 1、`b` に 2）。
+
+    ブロック引数が1つだけなら展開されず、配列 `[1, 2]` がそのまま入ります。
+
+- cat: 文法
+  topic: yieldと引数の数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def two
+      yield 1, 2
+    end
+    two { |a| p a }
+    two { |a, b, c| p [a, b, c] }
+    two { |*a| p a }
+  choices: ["1\n[1, 2, nil]\n[1, 2]", "[1, 2]\n[1, 2, nil]\n[1, 2]", "1\n[1, 2]\n[1, 2]", "1\n[1, 2, nil]\n[[1, 2]]"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロックは Proc と同じく引数の数に寛容です。`yield` で渡した値が多ければ余りは捨てられ（`|a|` には 1 だけ）、足りなければ `nil` が入ります。
+
+    `|*a|` のように可変長で受け取ると、渡された値がすべて配列になります。
+
+- cat: 文法
+  topic: Procの呼び出し方
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されないもの（エラーになるもの）を1つ選択してください。'
+  code: |
+    add = proc { |a, b| a + b }
+    p __(1)__
+  result: '3'
+  choices: ['add.call(1, 2)', 'add.(1, 2)', 'add[1, 2]', 'add(1, 2)']
+  answer: [3]
+  verify: blank
+  negate: true
+  exp: |
+    Proc は `call`、`.()`、`[]`（ほかに `yield`、`===`）で呼び出せます。
+
+    `add(1, 2)` は `add` という名前の**メソッド**を呼ぼうとするため `NoMethodError` になります。変数に入れた Proc は、メソッドのように括弧だけでは呼び出せません。
+
+- cat: 文法
+  topic: ブロック・lambda内のreturn
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def m1
+      [1, 2, 3].each { |x| return x * 10 if x == 2 }
+      0
+    end
+    def m2
+      l = -> { return 5 }
+      l.call
+      0
+    end
+    p m1, m2
+  choices: ["20\n0", "0\n0", "20\n5", "0\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック（や `proc`）の中の `return` は、そのブロックを定義したメソッド自体から抜けます。`m1` は `x` が 2 のときに `20` を返して終了します。
+
+    lambda の中の `return` は lambda から抜けるだけなので、`m2` は次の行に進んで `0` を返します。
+
+- cat: 文法
+  topic: デフォルト引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def area(w, h = w)
+      w * h
+    end
+    p area(3), area(3, 4)
+  choices: ["9\n12", "!`NameError` が発生する", "3\n12", "nil\n12"]
+  answer: [0]
+  verify: output
+  exp: |
+    デフォルト値には任意の式を書けます。前にある引数を参照することもできるので、`h = w` とすれば `h` を省略したときに `w` と同じ値になります。
+
+- cat: 文法
+  topic: 引数の展開（* と **）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def f(a, b, c)
+      a + b + c
+    end
+    nums = [1, 2]
+    p f(*nums, 3)
+    def g(x:, y: 0)
+      x - y
+    end
+    opts = { x: 10, y: 3 }
+    p g(**opts)
+  choices: ["6\n7", "!`ArgumentError` が発生する", "6\n10", "[1, 2, 3]\n7"]
+  answer: [0]
+  verify: output
+  exp: |
+    メソッド呼び出しで配列の前に `*` を付けると、要素が展開されて個別の引数として渡されます（`f(1, 2, 3)` と同じ）。
+
+    ハッシュの前に `**` を付けると、キーワード引数として展開されます（`g(x: 10, y: 3)` と同じ）。
+
+- cat: 文法
+  topic: ハッシュを受け取る引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def show(opts = {})
+      p opts
+    end
+    show(a: 1, b: 2)
+    show
+  choices: ["{:a=>1, :b=>2}\n{}", "[:a, 1, :b, 2]\n{}", "{:a=>1, :b=>2}\nnil", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    キーワード引数を定義していないメソッドに `a: 1, b: 2` の形で渡すと、最後の引数として1つのハッシュにまとめて渡されます。
+
+    引数を省略した場合はデフォルト値の `{}` になります。
+
+- cat: 文法
+  topic: セッターの戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Box
+      def size=(v)
+        @size = v * 2
+        999
+      end
+      def size
+        @size
+      end
+    end
+    b = Box.new
+    p(b.size = 5)
+    p b.size
+  choices: ["5\n10", "999\n10", "10\n10", "5\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    `obj.size = 5` のような代入形式でセッターを呼ぶと、式の値はメソッドの戻り値ではなく、右辺の値（`5`）になります。メソッド内の `999` は使われません。
+
+    セッター内で `@size` には `10` が入っています。
+
+- cat: 文法
+  topic: メソッドの戻り値（nil）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def a; end
+    def b
+      return
+    end
+    def c
+      if false
+        1
+      end
+    end
+    p a, b, c
+  choices: ["nil\nnil\nnil", '!`SyntaxError` が発生する', "nil\nnil\nfalse", "\"\"\nnil\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    メソッドは最後に評価した式の値を返します。中身が空のメソッド、値を付けない `return`、条件が偽で `else` のない `if` は、どれも `nil` を返します。
+
+- cat: 文法
+  topic: ensureとreturn
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def m
+      puts "start"
+      return 1
+    ensure
+      puts "ensure"
+    end
+    p m
+  choices: ["start\nensure\n1", "start\n1", "start\n1\nensure", "start\nensure\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `def` の中に直接 `ensure` を書けます（`begin` は省略可）。`return` でメソッドを抜けるときも `ensure` 節は必ず実行されます。
+
+    `ensure` 節の値は戻り値に影響しないので、戻り値は `return` した `1` です。
+
+- cat: 文法
+  topic: rescue修飾子
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = Integer("x") rescue -1
+    b = Integer("12") rescue -1
+    p a, b
+  choices: ["-1\n12", "-1\n-1", "nil\n12", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `式 rescue 値` の形（rescue 修飾子）は、式で `StandardError` が発生したときに右側の値を返します。
+
+    `Integer("x")` は `ArgumentError` になるので `-1`、`Integer("12")` は成功するので `12` です。
+
+- cat: 文法
+  topic: 例外の発生（raise）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    begin
+      raise ArgumentError, "bad value"
+    rescue => e
+      puts "#{e.class}: #{e.message}"
+    end
+  choices: ['ArgumentError: bad value', 'RuntimeError: bad value', 'StandardError: bad value', 'ArgumentError: ArgumentError']
+  answer: [0]
+  verify: output
+  exp: |
+    `raise 例外クラス, メッセージ` で、指定したクラスの例外をメッセージ付きで発生させます。
+
+    `rescue => e` で受け取った例外オブジェクトから、`class` でクラス、`message` でメッセージを取り出せます。
+
+- cat: 文法
+  topic: 独自の例外クラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class MyError < StandardError; end
+    class FatalError < Exception; end
+    begin
+      raise MyError, "a"
+    rescue => e
+      puts "1: #{e.message}"
+    end
+    begin
+      raise FatalError, "b"
+    rescue => e
+      puts "2: #{e.message}"
+    end
+  choices:
+    - '`1: a` と出力された後、`FatalError` でプログラムが異常終了する'
+    - '`1: a` と `2: b` が出力される'
+    - '何も出力されずに `MyError` で異常終了する'
+    - '`2: b` だけが出力される'
+  answer: [0]
+  verify: run
+  expect: {out: "1: a", error: FatalError}
+  exp: |
+    クラス名を省略した `rescue` が捕捉するのは `StandardError` とそのサブクラスだけです。
+
+    `MyError` は `StandardError` を継承しているので捕捉されますが、`Exception` を直接継承した `FatalError` は捕捉されず、プログラムが終了します。独自の例外は `StandardError` を継承して作るのが基本です。
+
+- cat: 文法
+  topic: ゼロ除算
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1.0 / 0
+    begin
+      1 / 0
+    rescue ZeroDivisionError => e
+      p e.class.superclass
+    end
+  choices: ["Infinity\nStandardError", '!1行目で `ZeroDivisionError` が発生する', "NaN\nStandardError", "Infinity\nException"]
+  answer: [0]
+  verify: output
+  exp: |
+    Float を 0 で割ってもエラーにはならず、`Infinity`（無限大）になります。
+
+    整数を整数の 0 で割ると `ZeroDivisionError` が発生します。`ZeroDivisionError` は `StandardError` のサブクラスです。
+
+- cat: 文法
+  topic: rescueとelseの戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def parse(s)
+      Integer(s)
+    rescue ArgumentError
+      0
+    else
+      100
+    end
+    p parse("5"), parse("x")
+  choices: ["100\n0", "5\n0", "5\n100", "100\n100"]
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue` 節と `else` 節がある場合、例外が発生しなければ `else` 節が実行され、その値が全体（ここではメソッド）の戻り値になります。
+
+    そのため `parse("5")` は `5` ではなく `100` を返します。例外が発生した `parse("x")` は `rescue` 節の値 `0` です。
+
+- cat: 文法
+  topic: catchとthrow
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = catch(:done) do
+      10.times { |i| throw :done, i if i == 3 }
+      :never
+    end
+    p r
+  choices: ['3', ':never', ':done', 'nil']
+  answer: [0]
+  verify: output
+  exp: |
+    `throw` を呼ぶと、同じタグ（ここでは `:done`）の `catch` ブロックまで一気に抜けます。`throw` の第2引数が `catch` の戻り値になります。
+
+    多重ループから一度に抜けたいときに使えます（例外処理とは別の仕組みです）。
+
+- cat: 文法
+  topic: マジックコメント
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    # frozen_string_literal: true
+    s = "abc"
+    t = String.new("abc")
+    t << "d"
+    p t
+    s << "d"
+  choices:
+    - '`"abcd"` と出力された後、`FrozenError` が発生する'
+    - '`"abcd"` と出力され、エラーは発生しない'
+    - '4行目で `FrozenError` が発生する'
+    - '1行目で `SyntaxError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: '"abcd"', error: FrozenError}
+  exp: |
+    ファイルの先頭に `# frozen_string_literal: true` と書くと、そのファイル内の文字列リテラルはすべて凍結（freeze）されます。リテラルの `s` に `<<` すると `FrozenError` です。
+
+    `String.new` で作った文字列はリテラルではないので凍結されず、変更できます。
+
+- cat: 文法
+  topic: 文字エンコーディング
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "日本語"
+    p s.size
+    p s.bytesize
+    p s.encoding
+  choices: ["3\n9\n#<Encoding:UTF-8>", "9\n9\n#<Encoding:UTF-8>", "3\n3\n#<Encoding:UTF-8>", "3\n6\n#<Encoding:Shift_JIS>"]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby のソースコードはデフォルトで UTF-8 として扱われます。`size`（`length`）は文字数、`bytesize` はバイト数を返します。UTF-8 では日本語は1文字3バイトなので、3文字で9バイトです。
+
+- cat: 文法
+  topic: 出力メソッドとnil・配列
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    puts [1, [2, 3]]
+    puts nil
+    p nil
+    print "a", "b", "\n"
+  choices:
+    - "1\n2\n3\n\nnil\nab"
+    - "[1, [2, 3]]\nnil\nnil\nab"
+    - "1\n2\n3\nnil\nnil\nab"
+    - "[1, [2, 3]]\n\nnil\nab"
+  answer: [0]
+  verify: output
+  exp: |
+    `puts` に配列を渡すと、入れ子も平らにして要素を1行ずつ出力します。`puts nil` は空行を出力します。
+
+    `p nil` は `nil` と表示します。`print` は複数の引数を区切りも改行もなしで続けて出力します。
+
+- cat: 文法
+  topic: 文字列と数値の演算
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "a" + 1.to_s
+    p "a" * 2
+    p "a" + 1
+  choices:
+    - '`"a1"`、`"aa"` と出力された後、`TypeError` が発生する'
+    - '`"a1"`、`"aa"`、`"a1"` と出力される'
+    - '1行目で `TypeError` が発生する'
+    - '`"a1"`、`"a2"` と出力された後、`TypeError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"a1\"\n\"aa\"", error: TypeError}
+  exp: |
+    Ruby は文字列と数値を自動では変換しないので、`"a" + 1` は `TypeError` です。`to_s` で文字列にしてから連結します。
+
+    `String#*` は文字列を指定回数くり返すメソッドなので、`"a" * 2` は `"aa"` です。
+
+- cat: 文法
+  topic: 文字列の比較
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "10" < "9"
+    p "apple" < "banana"
+    p "Z" < "a"
+    p "abc" <=> "abd"
+  choices: ["true\ntrue\ntrue\n-1", "false\ntrue\nfalse\n-1", "false\ntrue\ntrue\n1", "true\ntrue\nfalse\n-1"]
+  answer: [0]
+  verify: output
+  exp: |
+    文字列は先頭から1文字ずつ文字コードで比較されます（辞書順）。`"10"` と `"9"` は1文字目の `"1"` と `"9"` で比べられるので `"10"` の方が小さくなります。
+
+    大文字は小文字より文字コードが小さいので `"Z" < "a"` は `true`。`<=>` は小さければ `-1` を返します。
+
+- cat: 文法
+  topic: 大きな整数と浮動小数点
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 2 ** 64
+    p x
+    p x.class
+    p 0.1 + 0.2 == 0.3
+  choices: ["18446744073709551616\nInteger\nfalse", "1.8446744073709552e+19\nFloat\nfalse", "18446744073709551616\nBignum\ntrue", "18446744073709551616\nInteger\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby の整数は桁あふれせず、大きな値もそのまま `Integer` で扱えます（以前の `Bignum` / `Fixnum` は `Integer` に統合されています）。
+
+    Float は2進数の近似値なので、`0.1 + 0.2` は `0.30000000000000004` となり `0.3` と等しくなりません。
+
+- cat: 文法
+  topic: 基数の変換
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 255.to_s(2)
+    p 255.to_s(16)
+    p "ff".to_i(16)
+    p "11".to_i(2)
+  choices: ["\"11111111\"\n\"ff\"\n255\n3", "11111111\nff\n255\n3", "\"11111111\"\n\"FF\"\n255\n11", "\"0b11111111\"\n\"0xff\"\n255\n3"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Integer#to_s(基数)` は指定した基数の文字列に、`String#to_i(基数)` は指定した基数の文字列として整数に変換します。
+
+    `to_s` の結果は接頭辞（`0b` や `0x`）の付かない文字列で、16進数は小文字になります。
+
+- cat: 文法
+  topic: 否定演算子
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = true
+    b = !a
+    c = (not a)
+    p b, c, !!nil, !!0
+  choices: ["false\nfalse\nfalse\ntrue", "false\nfalse\nfalse\nfalse", "false\ntrue\nfalse\ntrue", "false\nfalse\nnil\n0"]
+  answer: [0]
+  verify: output
+  exp: |
+    `!` と `not` はどちらも真偽を反転します（`not` は優先順位が低い）。`!!` と2回反転すると、値を `true` / `false` に変換できます。
+
+    `nil` は偽なので `!!nil` は `false`、`0` は真なので `!!0` は `true` です。
+
+- cat: 文法
+  topic: 演算子はメソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1.+(2)
+    p 10.send(:-, 3)
+    p [1, 2].<<(3)
+  choices: ["3\n7\n[1, 2, 3]", '!1行目で `SyntaxError` が発生する', "3\n-7\n[1, 2, 3]", "3\n7\n[1, 2, [3]]"]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby の多くの演算子はメソッドとして定義されています。`1 + 2` は `1.+(2)` と同じで、`send` を使ってシンボルで呼び出すこともできます。
+
+    そのため、自分のクラスで `+` や `==`、`<<` などを定義して使うこともできます。
+
+- cat: 文法
+  topic: 多重代入（*の位置）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    first, *rest = "a,b,c".split(",")
+    p first, rest
+    *init, last = [1, 2, 3]
+    p init, last
+  choices: ["\"a\"\n[\"b\", \"c\"]\n[1, 2]\n3", "\"a\"\n\"b\"\n[1, 2]\n3", "[\"a\"]\n[\"b\", \"c\"]\n[1, 2]\n[3]", "\"a\"\n[\"b\", \"c\"]\n1\n[2, 3]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `*` を付けた変数は、ほかの変数に割り当てた残りをすべて配列で受け取ります。先頭に付けた場合は「最後以外」、末尾に付けた場合は「先頭以外」を受け取ります。
+
+- cat: 文法
+  topic: 変数とメソッドの名前の衝突
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def foo
+      "method"
+    end
+    p foo
+    foo = "var"
+    p foo
+    p foo()
+  choices: ["\"method\"\n\"var\"\n\"method\"", "\"method\"\n\"var\"\n\"var\"", "\"var\"\n\"var\"\n\"method\"", '!5行目で `SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    同じ名前のローカル変数とメソッドがある場合、代入より後ろでは変数が優先されます。代入の前ではメソッド呼び出しになります。
+
+    `foo()` のように括弧を付けると、変数があってもメソッド呼び出しになります。
+
+- cat: 文法
+  topic: 実行されない代入
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    if false
+      z = 1
+    end
+    p z
+  choices: ['nil', '1', '!`NameError` が発生する', 'false']
+  answer: [0]
+  verify: output
+  exp: |
+    ローカル変数は、代入文が実行されたかではなく、パーサーが代入を見つけた時点で定義されます。代入が実行されなかった変数の値は `nil` です。
+
+    そのため `NameError` にはならず、`nil` と出力されます。
+
+- cat: 文法
+  topic: ブロックからのbreak
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = [1, 2, 3, 4].each do |x|
+      break x * 100 if x == 3
+    end
+    p r
+    r2 = [1, 2].each { |x| x }
+    p r2
+  choices: ["300\n[1, 2]", "[1, 2, 3, 4]\n[1, 2]", "300\n2", "nil\n[1, 2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロックの中で `break` を使うと、ブロックを呼び出したメソッド（`each`）がその場で終了し、`break` に渡した値がメソッドの戻り値になります。
+
+    最後まで `break` しなかった場合、`each` はレシーバ自身（`[1, 2]`）を返します。

@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruby Silver 道場</title>
+<meta name="description" content="Ruby技術者認定試験Silverのオリジナル問題を1問ずつ解いて、その場で正解と解説を確認できる学習サイト。">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one exam-sheet column. Home (exam list + history) → quiz sheet → result & review. */
+:root {
+  --bg: #f6f4f5;
+  --surface: #ffffff;
+  --fg: #1f1b1e;
+  --muted: #6c6468;
+  --line: #e2dcdf;
+  --ruby: #a3123a;
+  --ok: #157656;
+  --ok-bg: #e7f3ed;
+  --ng-bg: #fbe9ee;
+  --code-bg: #faf8f9;
+  --chip: #efebed;
+  --hl-kw: #a3123a;
+  --hl-str: #2f6b2f;
+  --hl-num: #8a4b00;
+  --hl-com: #8b8287;
+  --hl-sym: #6b3fa0;
+  --hl-const: #0f5e8c;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", "BIZ UDGothic", "Osaka-Mono", "MS Gothic", ui-monospace, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141215; --surface: #1c191d; --fg: #ece7ea; --muted: #a59da1; --line: #322d31;
+    --ruby: #ff6582; --ok: #4cc896; --ok-bg: #13281f; --ng-bg: #2d1419; --code-bg: #120f12; --chip: #2a2529;
+    --hl-kw: #ff7a93; --hl-str: #9bd68e; --hl-num: #f0b46a; --hl-com: #847a80; --hl-sym: #c7a4f5; --hl-const: #7cc4f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141215; --surface: #1c191d; --fg: #ece7ea; --muted: #a59da1; --line: #322d31;
+  --ruby: #ff6582; --ok: #4cc896; --ok-bg: #13281f; --ng-bg: #2d1419; --code-bg: #120f12; --chip: #2a2529;
+  --hl-kw: #ff7a93; --hl-str: #9bd68e; --hl-num: #f0b46a; --hl-com: #847a80; --hl-sym: #c7a4f5; --hl-const: #7cc4f0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.75;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+code, pre, .mono { font-family: var(--font-code); }
+h2, h3 { text-wrap: balance; }
+
+/* header */
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand a { color: inherit; text-decoration: none; }
+.brand h1 { margin: 0; font-size: 20px; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+.gem { width: 14px; height: 14px; background: var(--ruby); clip-path: polygon(50% 100%, 0 38%, 22% 6%, 78% 6%, 100% 38%); flex: none; }
+.brand small { color: var(--muted); font-size: 12px; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 7px 14px; font-size: 14px; cursor: pointer; line-height: 1.4; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
+.btn.primary:hover { opacity: .9; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--ruby); }
+.btn.danger.armed { background: var(--ruby); color: var(--surface); border-color: var(--ruby); }
+
+/* panels (home, review) */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+.panel-head h2 { margin: 0; font-size: 16px; }
+.panel-head .meta { font-size: 13px; color: var(--muted); }
+.panel-head .meta b { color: var(--fg); font-family: var(--font-code); font-variant-numeric: tabular-nums; }
+.intro { margin: 0; color: var(--muted); font-size: 14px; max-width: 65ch; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows > li + li { border-top: 1px solid var(--line); }
+.exam { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 20px; flex-wrap: wrap; }
+.exam .txt { min-width: 0; flex: 1 1 260px; }
+.exam h3 { margin: 0; font-size: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.exam h3 .count { font-family: var(--font-code); font-size: 13px; color: var(--muted); font-weight: 400; }
+.exam p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips .btn { padding: 6px 12px; }
+.chips .btn span { font-family: var(--font-code); color: var(--muted); font-size: 12px; margin-left: 4px; }
+.resume { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border: 1.5px solid var(--fg); border-radius: var(--r); background: var(--surface); }
+.resume .txt { min-width: 0; flex: 1 1 260px; }
+.resume strong { display: block; font-size: 15px; }
+.resume span { font-size: 13px; color: var(--muted); }
+.resume .acts { display: flex; gap: 8px; }
+.hist-row { width: 100%; display: grid; grid-template-columns: 9.5em 1fr auto auto; align-items: center; gap: 12px; padding: 12px 20px; background: none; border: 0; text-align: left; cursor: pointer; }
+.hist-row:hover { background: var(--bg); }
+.hist-row .date { font-family: var(--font-code); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hist-row .ttl { min-width: 0; font-size: 14px; }
+.hist-row .ttl small { color: var(--muted); margin-left: 6px; }
+.hist-row .score { font-family: var(--font-code); font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+.badge { font-size: 12px; font-weight: 700; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+.badge.pass { background: var(--ok-bg); color: var(--ok); }
+.badge.fail { background: var(--ng-bg); color: var(--ruby); }
+.badge.part { background: var(--chip); color: var(--muted); }
+.empty { color: var(--muted); font-size: 14px; padding: 20px; margin: 0; }
+.panel-foot { display: flex; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid var(--line); }
+
+/* quiz bar & progress */
+.quizbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.quizbar .qtitle { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; text-align: center; }
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.progress-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.progress-row b { color: var(--fg); font-family: var(--font-code); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--fg); width: 0; transition: width .25s ease; }
+
+/* question sheet */
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 22px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qno { font-family: var(--font-code); font-weight: 600; font-size: 15px; }
+.tag { font-size: 12px; background: var(--chip); border-radius: 4px; padding: 2px 8px; color: var(--muted); }
+.tag.multi { background: var(--fg); color: var(--bg); font-weight: 700; }
+.tag.id { font-family: var(--font-code); }
+.qtext { margin: 0; font-size: 17px; text-wrap: pretty; }
+.blank { display: inline-block; font-family: var(--font-code); font-size: .9em; border: 1.5px solid currentColor; border-radius: 4px; padding: 0 .45em; line-height: 1.5; margin: 0 2px; }
+.code { display: flex; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-size: 14px; line-height: 1.65; }
+.code pre { margin: 0; padding: 12px 14px; white-space: pre; }
+.code .ln { color: var(--hl-com); text-align: right; user-select: none; padding-right: 10px; border-right: 1px solid var(--line); position: sticky; left: 0; background: var(--code-bg); }
+.code .src { flex: 1; min-width: 0; }
+.result-box { display: flex; flex-direction: column; gap: 4px; }
+.result-box .label { font-size: 13px; color: var(--muted); }
+.result-box pre { margin: 0; background: var(--code-bg); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 14px; font-size: 14px; overflow-x: auto; }
+
+/* hljs tokens */
+.hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--hl-kw); }
+.hljs-string, .hljs-regexp, .hljs-subst .hljs-string { color: var(--hl-str); }
+.hljs-subst { color: var(--fg); }
+.hljs-number { color: var(--hl-num); }
+.hljs-comment { color: var(--hl-com); font-style: italic; }
+.hljs-symbol { color: var(--hl-sym); }
+.hljs-title, .hljs-title.class_, .hljs-type { color: var(--hl-const); }
+.hljs-variable, .hljs-params { color: inherit; }
+
+/* choices */
+.choices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.choice {
+  width: 100%; display: grid; grid-template-columns: 30px 1fr auto; align-items: start; gap: 12px;
+  text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px;
+  padding: 11px 14px; cursor: pointer; transition: border-color .12s ease, background .12s ease;
+}
+button.choice:hover:not(:disabled) { border-color: var(--muted); }
+.choice:disabled, div.choice { cursor: default; }
+.choice .key { font-family: var(--font-code); font-weight: 600; font-size: 14px; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; line-height: 1; }
+.choice .body { min-width: 0; padding-top: 2px; }
+.choice pre { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre; overflow-x: auto; }
+.choice .prose { font-size: 15px; line-height: 1.65; }
+.choice .mark { font-size: 13px; font-weight: 700; padding-top: 4px; white-space: nowrap; }
+.choice.picked { border-color: var(--fg); }
+.choice.picked .key { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.choice.right { border-color: var(--ok); background: var(--ok-bg); }
+.choice.right .key { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.choice.right .mark { color: var(--ok); }
+.choice.wrong { border-color: var(--ruby); background: var(--ng-bg); }
+.choice.wrong .key { background: var(--ruby); border-color: var(--ruby); color: var(--surface); }
+.choice.wrong .mark { color: var(--ruby); }
+.choice.dim { opacity: .6; }
+.submit-row { display: flex; justify-content: flex-end; }
+
+/* verdict & explanation */
+.verdict { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-radius: 8px; padding: 12px 16px; }
+.verdict.ok { background: var(--ok-bg); color: var(--ok); }
+.verdict.ng { background: var(--ng-bg); color: var(--ruby); }
+.verdict.none { background: var(--chip); color: var(--muted); }
+.verdict strong { font-size: 18px; }
+.verdict span { color: var(--fg); font-size: 14px; }
+.exp { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.exp h3 { margin: 0; font-size: 14px; letter-spacing: .08em; color: var(--muted); }
+.exp p, .exp ul, .exp ol { margin: 0; max-width: 65ch; }
+.exp ul, .exp ol { padding-left: 1.4em; display: flex; flex-direction: column; gap: 2px; }
+.exp :not(pre) > code, .prose code, .qtext code { font-size: .88em; background: var(--chip); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.exp pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 14px; overflow-x: auto; }
+
+/* nav */
+nav.qnav { display: flex; justify-content: space-between; gap: 8px; }
+.kbd-hint { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+@media (hover: none) { .kbd-hint { display: none; } }
+
+/* result */
+.summary { display: flex; flex-direction: column; gap: 16px; }
+.summary h2 { margin: 0; font-size: 20px; }
+.summary .when { margin: -10px 0 0; font-size: 13px; color: var(--muted); font-family: var(--font-code); }
+.score { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.score .big { font-family: var(--font-code); font-size: 44px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.score .of { color: var(--muted); }
+.gauge { position: relative; height: 10px; background: var(--line); border-radius: 5px; }
+.gauge i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--fg); }
+.gauge i.pass { background: var(--ok); }
+.gauge .line { position: absolute; top: -6px; bottom: -6px; left: 75%; width: 2px; background: var(--ruby); }
+.gauge-labels { position: relative; height: 18px; font-size: 12px; color: var(--muted); }
+.gauge-labels span { position: absolute; left: 75%; transform: translateX(-50%); white-space: nowrap; }
+.bycat { display: flex; gap: 8px 20px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.bycat b { color: var(--fg); font-family: var(--font-code); font-variant-numeric: tabular-nums; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: 700; }
+.review-list > li > details > summary { list-style: none; display: grid; grid-template-columns: 2.2em 2.6em 1fr auto; align-items: center; gap: 10px; padding: 11px 20px; cursor: pointer; }
+.review-list > li > details > summary::-webkit-details-marker { display: none; }
+.review-list > li > details > summary:hover { background: var(--bg); }
+.review-list > li > details[open] > summary { background: var(--bg); }
+.review-list .mk { font-weight: 700; text-align: center; }
+.review-list .mk.ok { color: var(--ok); }
+.review-list .mk.ng { color: var(--ruby); }
+.review-list .mk.none { color: var(--muted); }
+.review-list .n { font-family: var(--font-code); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.review-list .topic { min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.review-list .topic small { color: var(--muted); }
+.review-list .ans { font-family: var(--font-code); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.review-body { padding: 4px 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+footer { font-size: 12px; color: var(--muted); line-height: 1.7; padding-top: 8px; }
+
+@media (max-width: 520px) {
+  .sheet { padding: 18px 14px 20px; }
+  .qtext { font-size: 16px; }
+  .choice { grid-template-columns: 26px 1fr; padding: 10px 12px; gap: 10px; }
+  .choice .key { width: 26px; height: 26px; font-size: 13px; }
+  .choice .mark { grid-column: 2; padding-top: 0; }
+  .code { font-size: 13px; }
+  .exam, .hist-row, .panel-head, .panel-foot { padding-left: 14px; padding-right: 14px; }
+  .hist-row { grid-template-columns: 1fr auto; row-gap: 2px; }
+  .hist-row .date { grid-column: 1 / -1; }
+  .review-list > li > details > summary { grid-template-columns: 1.6em 2.4em 1fr; padding-left: 12px; padding-right: 12px; }
+  .review-list .ans { grid-column: 3; }
+  .review-body { padding-left: 12px; padding-right: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <a href="#home"><h1><span class="gem" aria-hidden="true"></span>Ruby Silver 道場</h1></a>
+      <small>Silver version 3（Ruby 3.1）対応・全<span id="total"></span>問</small>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    問題はすべてこのサイトのオリジナルです。コードは実際に Ruby で実行し、正解が実行結果と一致することを確かめています（試験の対象は Ruby 3.1、確認は Ruby 3.3）。本試験は 50 問・90 分・正答率 75% で合格です。学習記録と受験履歴はこのブラウザにだけ保存されます。
+  </footer>
+</div>
+
+<script src="q1.js"></script>
+<script src="q2.js"></script>
+<script src="q3.js"></script>
+<script src="q4.js"></script>
+<script src="q5.js"></script>
+<script src="q6.js"></script>
+<script src="q7.js"></script>
+<script src="q8.js"></script>
+<script src="q9.js"></script>
+<script src="q10.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+const QUESTIONS = (window.QUESTIONS || []).slice().sort((a, b) => a.id - b.id);
+const CATS = ["文法", "組み込みライブラリ", "オブジェクト指向"];
+const KEYS = ["A", "B", "C", "D", "E", "F"];
+const PASS = 75;
+const byId = new Map(QUESTIONS.map(q => [q.id, q]));
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const validIds = ids => Array.isArray(ids) && ids.length > 0 && ids.every(id => byId.has(id));
+let hist = store.get("rs-hist", {});              // question id -> { ok, n, c } (latest result per question)
+let current = store.get("rs-current", null);      // the session in progress
+let records = store.get("rs-history", []);        // finished sessions, newest first
+if (!current || !validIds(current.ids)) current = null;
+records = Array.isArray(records) ? records.filter(r => r && validIds(r.ids)) : [];
+let picked = [];
+function save() { store.set("rs-hist", hist); store.set("rs-history", records); if (current) store.set("rs-current", current); else store.del("rs-current"); }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const BLANK = "__(1)__";
+const BLANK_HTML = '<span class="blank">(1)</span>';
+
+// ---------- text rendering ----------
+function inline(s) {
+  let out = "";
+  for (const p of String(s).split(/(`[^`]+`)/)) {
+    if (p.startsWith("`") && p.endsWith("`") && p.length > 1) out += "<code>" + esc(p.slice(1, -1)) + "</code>";
+    else out += esc(p).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").split(esc(BLANK)).join(BLANK_HTML);
+  }
+  return out;
+}
+function highlight(code) {
+  const marker = "zzblankzz";
+  const src = code.split(BLANK).join(marker);
+  let html;
+  try { html = window.hljs ? hljs.highlight(src, { language: "ruby", ignoreIllegals: true }).value : esc(src); }
+  catch (e) { html = esc(src); }
+  return html.split(marker).join(BLANK_HTML);
+}
+function codeBlock(code) {
+  const text = code.replace(/\n$/, "");
+  const nums = Array.from({ length: text.split("\n").length }, (_, i) => i + 1).join("\n");
+  return `<div class="code"><pre class="ln" aria-hidden="true">${nums}</pre><pre class="src"><code>${highlight(text)}</code></pre></div>`;
+}
+function md(text) {
+  const lines = String(text).replace(/\n+$/, "").split("\n");
+  let html = "", i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (l.startsWith("```")) {
+      const buf = []; i++;
+      while (i < lines.length && !lines[i].startsWith("```")) buf.push(lines[i++]);
+      i++;
+      html += `<pre><code>${highlight(buf.join("\n"))}</code></pre>`;
+    } else if (/^- /.test(l)) {
+      const items = [];
+      while (i < lines.length && /^- /.test(lines[i])) items.push(lines[i++].slice(2));
+      html += "<ul>" + items.map(t => `<li>${inline(t)}</li>`).join("") + "</ul>";
+    } else if (/^\d+\. /.test(l)) {
+      const items = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) items.push(lines[i++].replace(/^\d+\. /, ""));
+      html += "<ol>" + items.map(t => `<li>${inline(t)}</li>`).join("") + "</ol>";
+    } else if (l.trim() === "") { i++; }
+    else {
+      const buf = [];
+      while (i < lines.length && lines[i].trim() !== "" && !/^(- |\d+\. |```)/.test(lines[i])) buf.push(lines[i++]);
+      html += `<p>${inline(buf.join(""))}</p>`;
+    }
+  }
+  return html;
+}
+function questionHead(q, label) {
+  const multi = q.answer.length > 1;
+  return `<div class="qhead"><span class="qno">${label}</span><span class="tag id">No.${q.id}</span><span class="tag">${esc(q.cat)}</span><span class="tag">${esc(q.topic)}</span>${multi ? `<span class="tag multi">${q.answer.length}つ選択</span>` : ""}</div>
+    <p class="qtext">${inline(q.q)}</p>${q.code ? codeBlock(q.code) : ""}${q.result != null ? `<div class="result-box"><span class="label">〔実行結果〕</span><pre>${esc(q.result)}</pre></div>` : ""}`;
+}
+function choiceBody(q, text) {
+  const prose = !q.cm || text.startsWith("!");
+  return prose ? `<div class="prose">${inline(text.replace(/^!/, ""))}</div>` : `<pre>${esc(text)}</pre>`;
+}
+// static (already answered) choice list, used in the quiz after answering and in the review
+function markedChoices(q, order, sel) {
+  return `<ol class="choices">` + order.map((orig, pos) => {
+    const isAns = q.answer.includes(orig), isSel = sel ? sel.includes(orig) : false;
+    const cls = isAns ? "right" : isSel ? "wrong" : "dim";
+    const mark = isAns ? (isSel ? "○ 正解" : "正解") : isSel ? "× あなたの解答" : "";
+    return `<li><div class="choice ${cls}"><span class="key">${KEYS[pos]}</span><span class="body">${choiceBody(q, q.choices[orig])}</span><span class="mark">${mark}</span></div></li>`;
+  }).join("") + `</ol>`;
+}
+const lettersOf = (orig, order) => orig.map(o => KEYS[order.indexOf(o)]).sort().join("・");
+
+// ---------- sessions ----------
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+const wrongIds = () => QUESTIONS.filter(q => hist[q.id] && !hist[q.id].ok).map(q => q.id);
+const catCount = c => QUESTIONS.filter(q => q.cat === c).length;
+const fmtDate = t => { const d = new Date(t), z = n => String(n).padStart(2, "0"); return `${d.getFullYear()}/${z(d.getMonth() + 1)}/${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+
+function makeSession(title, ids) {
+  ids = shuffle(ids);
+  const perm = {};
+  ids.forEach(id => { perm[id] = shuffle(byId.get(id).choices.map((_, k) => k)); });
+  return { title, ids, perm, ans: {}, i: 0, startedAt: Date.now() };
+}
+function startExam(kind, arg) {
+  let title, ids;
+  const all = QUESTIONS.map(q => q.id);
+  if (kind === "mock") { ids = shuffle(all).slice(0, 50); title = "模擬試験"; }
+  else if (kind === "mini") { ids = shuffle(all).slice(0, 10); title = "ミニテスト"; }
+  else if (kind === "all") { ids = all; title = "全問チャレンジ"; }
+  else if (kind === "cat") { ids = QUESTIONS.filter(q => q.cat === arg).map(q => q.id); title = `分野別：${arg}`; }
+  else if (kind === "wrong") { ids = wrongIds(); title = "まちがえた問題"; }
+  else if (kind === "ids") { ids = arg.ids; title = arg.title; }
+  if (!ids || !ids.length) return;
+  archiveCurrent();
+  current = makeSession(title, ids);
+  save();
+  navigate("quiz");
+}
+function toRecord(s) {
+  return { id: Date.now(), title: s.title, ids: s.ids, perm: s.perm, ans: s.ans, startedAt: s.startedAt, finishedAt: Date.now(), complete: Object.keys(s.ans).length === s.ids.length };
+}
+function archiveCurrent() {
+  if (current && Object.keys(current.ans).length) { records.unshift(toRecord(current)); records = records.slice(0, 100); }
+  current = null;
+}
+function finishCurrent() {
+  if (!current) return;
+  const rec = toRecord(current);
+  records.unshift(rec); records = records.slice(0, 100);
+  current = null; save();
+  navigate("r" + rec.id);
+}
+function stats(r) {
+  const total = r.ids.length;
+  const answered = r.ids.filter(id => r.ans[id]).length;
+  const ok = r.ids.filter(id => r.ans[id] && r.ans[id].ok).length;
+  return { total, answered, ok, pct: total ? Math.round(ok / total * 100) : 0 };
+}
+
+// ---------- routing ----------
+function navigate(h) {
+  if (location.hash.slice(1) !== h) {
+    try { history.pushState(null, "", "#" + h); } catch (e) { location.hash = h; return; }
+  }
+  route();
+}
+function route() {
+  const h = location.hash.slice(1);
+  const rec = /^r\d+$/.test(h) ? records.find(r => r.id === +h.slice(1)) : null;
+  if (h === "quiz" && current) renderQuiz();
+  else if (rec) renderResult(rec);
+  else renderHome();
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener("hashchange", route);
+window.addEventListener("popstate", route);
+
+// ---------- home ----------
+function renderHome() {
+  const wrong = wrongIds().length;
+  const done = Object.keys(hist).length, okCnt = Object.values(hist).filter(h => h.ok).length;
+  let html = `<p class="intro">Ruby技術者認定試験 Silver（version 3）のオリジナル問題 ${QUESTIONS.length} 問。出題順と選択肢の並びは毎回ランダムで、1問ごとに正解と解説を確認できます。</p>`;
+  if (current) {
+    const s = stats(current);
+    html += `<section class="resume" aria-label="解きかけの回">
+      <div class="txt"><strong>${esc(current.title)}の途中です</strong><span>${s.total} 問中 ${s.answered} 問回答済み・正解 ${s.ok} 問　新しく始めると、この回は途中までの結果で履歴に残ります。</span></div>
+      <div class="acts"><button class="btn primary" type="button" id="resume">続きから</button></div></section>`;
+  }
+  const exam = (title, count, desc, btn) => `<li class="exam"><div class="txt"><h3>${title}<span class="count">${count}</span></h3><p>${desc}</p></div>${btn}</li>`;
+  html += `<section class="panel" aria-labelledby="h-exams"><div class="panel-head"><h2 id="h-exams">試験を選ぶ</h2></div><ul class="rows">
+    ${exam("模擬試験", "50問", "本試験と同じ問題数。全範囲からランダムに出題します。", `<button class="btn primary" type="button" data-start="mock">スタート</button>`)}
+    ${exam("ミニテスト", "10問", "すき間時間向け。全範囲からランダムに10問。", `<button class="btn" type="button" data-start="mini">スタート</button>`)}
+    ${exam("全問チャレンジ", `${QUESTIONS.length}問`, "全問題をランダムな順番で解きます。", `<button class="btn" type="button" data-start="all">スタート</button>`)}
+    ${exam("分野別", "", "選んだ分野の問題をすべてランダムな順番で解きます。", `<div class="chips">${CATS.map(c => `<button class="btn" type="button" data-start="cat" data-cat="${c}">${c}<span>${catCount(c)}</span></button>`).join("")}</div>`)}
+    ${exam("まちがえた問題", `${wrong}問`, wrong ? "前回まちがえた問題だけを解き直します。正解すると対象から外れます。" : "まちがえた問題はまだありません。", `<button class="btn" type="button" data-start="wrong" ${wrong ? "" : "disabled"}>スタート</button>`)}
+  </ul></section>`;
+  html += `<section class="panel" aria-labelledby="h-hist"><div class="panel-head"><h2 id="h-hist">受験履歴</h2><span class="meta">回答した問題 <b>${done}</b> / ${QUESTIONS.length}・前回正解 <b>${okCnt}</b></span></div>`;
+  if (records.length) {
+    html += `<ul class="rows">` + records.map(r => {
+      const s = stats(r);
+      const badge = !r.complete ? `<span class="badge part">途中終了</span>` : s.pct >= PASS ? `<span class="badge pass">合格ライン</span>` : `<span class="badge fail">75%未満</span>`;
+      return `<li><button class="hist-row" type="button" data-rec="${r.id}"><span class="date">${fmtDate(r.finishedAt)}</span><span class="ttl">${esc(r.title)}<small>${s.total}問</small></span><span class="score">${s.ok}/${s.total}・${s.pct}%</span>${badge}</button></li>`;
+    }).join("") + `</ul><div class="panel-foot"><button class="btn danger" type="button" id="reset">学習記録と履歴をすべて削除</button></div>`;
+  } else {
+    html += `<p class="empty">まだ履歴はありません。上の試験を解き終えると、その回の結果と解答がここに残り、あとから振り返れます。</p>`;
+  }
+  html += `</section>`;
+  $("#main").innerHTML = html;
+  $("#main").querySelectorAll("[data-start]").forEach(b => b.addEventListener("click", () => startExam(b.dataset.start, b.dataset.cat)));
+  $("#main").querySelectorAll("[data-rec]").forEach(b => b.addEventListener("click", () => navigate("r" + b.dataset.rec)));
+  const rs = $("#resume"); if (rs) rs.addEventListener("click", () => navigate("quiz"));
+  const reset = $("#reset");
+  if (reset) armButton(reset, "もう一度押すと削除します", () => { hist = {}; records = []; current = null; save(); renderHome(); });
+}
+function armButton(b, armedText, action) {
+  const label = b.textContent; let t;
+  b.addEventListener("click", () => {
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed"); b.textContent = armedText;
+      t = setTimeout(() => { b.classList.remove("armed"); b.textContent = label; }, 4000);
+      return;
+    }
+    clearTimeout(t); action();
+  });
+}
+
+// ---------- quiz ----------
+function renderQuiz() {
+  const s = current, total = s.ids.length;
+  const q = byId.get(s.ids[s.i]);
+  const a = s.ans[q.id];
+  const order = s.perm[q.id] || q.choices.map((_, k) => k);
+  const st = stats(s);
+  picked = [];
+  let html = `<div class="quizbar"><button class="btn ghost" type="button" id="to-home">← ホーム</button><span class="qtitle">${esc(s.title)}</span><button class="btn ghost danger" type="button" id="end">終了して採点</button></div>
+    <div class="progress"><div class="progress-row"><span>問 <b>${s.i + 1} / ${total}</b></span><span>正解 <b id="sc-ok">${st.ok}</b> ／ 回答 <b id="sc-done">${st.answered}</b></span></div>
+    <div class="bar"><i style="width:${(s.i + 1) / total * 100}%"></i></div></div>
+    <article class="sheet">${questionHead(q, `問 ${s.i + 1}`)}`;
+  if (a) html += markedChoices(q, order, a.sel);
+  else {
+    html += `<ol class="choices" id="choices">` + order.map((orig, pos) => `<li><button type="button" class="choice" data-orig="${orig}" data-pos="${pos}"><span class="key">${KEYS[pos]}</span><span class="body">${choiceBody(q, q.choices[orig])}</span><span class="mark"></span></button></li>`).join("") + `</ol>`;
+    if (q.answer.length > 1) html += `<div class="submit-row" id="submit-row"><button class="btn primary" type="button" id="submit" disabled>解答する</button></div>`;
+  }
+  html += `<div id="feedback">${a ? feedback(q, a, order) : ""}</div></article>
+    <nav class="qnav"><button class="btn" type="button" id="prev" ${s.i === 0 ? "disabled" : ""}>← 前の問題</button>
+    <button class="btn ${a ? "primary" : ""}" type="button" id="next">${s.i === total - 1 ? "結果を見る" : "次の問題 →"}</button></nav>
+    <p class="kbd-hint">キーボード：A〜${KEYS[q.choices.length - 1]} または 1〜${q.choices.length} で選択 ／ Enter で解答・次へ ／ ← → で移動</p>`;
+  $("#main").innerHTML = html;
+  $("#to-home").addEventListener("click", () => navigate("home"));
+  armButton($("#end"), "もう一度押すと採点します", finishCurrent);
+  $("#prev").addEventListener("click", () => step(-1));
+  $("#next").addEventListener("click", () => step(1));
+  const ch = $("#choices");
+  if (ch) ch.addEventListener("click", e => { const b = e.target.closest(".choice"); if (b && !b.disabled) choose(q, +b.dataset.orig); });
+  const sb = $("#submit"); if (sb) sb.addEventListener("click", () => submit(q));
+}
+function feedback(q, a, order) {
+  const h = hist[q.id];
+  const record = h && h.n > 1 ? `　これまで ${h.n} 回中 ${h.c} 回正解` : "";
+  return `<div class="verdict ${a.ok ? "ok" : "ng"}" role="status"><strong>${a.ok ? "○ 正解" : "× 不正解"}</strong><span>正解は ${lettersOf(q.answer, order)}${record}</span></div>
+    <section class="exp"><h3>解説</h3>${md(q.exp)}</section>`;
+}
+function paintPicked(q) {
+  document.querySelectorAll("#choices .choice").forEach(b => b.classList.toggle("picked", picked.includes(+b.dataset.orig)));
+  const s = $("#submit"); if (!s) return;
+  const need = q.answer.length;
+  s.disabled = picked.length !== need;
+  s.textContent = picked.length === need ? "解答する" : picked.length < need ? `解答する（あと${need - picked.length}つ選んでください）` : `${need}つまで選べます`;
+}
+function choose(q, orig) {
+  if (current.ans[q.id]) return;
+  if (q.answer.length === 1) { picked = [orig]; submit(q); return; }
+  picked = picked.includes(orig) ? picked.filter(x => x !== orig) : picked.concat(orig);
+  paintPicked(q);
+}
+function submit(q) {
+  if (current.ans[q.id] || picked.length !== q.answer.length) return;
+  const ok = sameSet(picked, q.answer);
+  current.ans[q.id] = { sel: picked.slice(), ok };
+  const h = hist[q.id] || { n: 0, c: 0 };
+  hist[q.id] = { ok, n: h.n + 1, c: h.c + (ok ? 1 : 0) };
+  save();
+  const y = window.scrollY;
+  renderQuiz();
+  window.scrollTo({ top: y });
+  $("#feedback").scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+function step(d) {
+  const ni = current.i + d;
+  if (ni < 0) return;
+  if (ni >= current.ids.length) { finishCurrent(); return; }
+  current.i = ni; save(); renderQuiz(); window.scrollTo({ top: 0 });
+}
+
+// ---------- result & review ----------
+function renderResult(r, filter = "all") {
+  const s = stats(r);
+  const wrong = r.ids.filter(id => !(r.ans[id] && r.ans[id].ok));
+  const pass = s.pct >= PASS;
+  const cats = CATS.map(c => { const ids = r.ids.filter(id => byId.get(id).cat === c); return ids.length ? `<span>${c} <b>${ids.filter(id => r.ans[id] && r.ans[id].ok).length}/${ids.length}</b></span>` : ""; }).join("");
+  let html = `<div class="quizbar"><button class="btn ghost" type="button" id="to-home">← ホーム</button></div>
+    <section class="sheet summary"><h2>${esc(r.title)}の結果</h2><p class="when">${fmtDate(r.finishedAt)}</p>
+    <div class="score"><span class="big">${s.pct}%</span><span class="of">${s.total} 問中 ${s.ok} 問正解${s.answered < s.total ? `（未回答 ${s.total - s.answered} 問）` : ""}・${pass ? "合格ライン（75%）に届いています" : `合格ライン（75%）まであと ${Math.max(0, Math.ceil(s.total * PASS / 100) - s.ok)} 問`}</span></div>
+    <div><div class="gauge"><i class="${pass ? "pass" : ""}" style="width:${s.pct}%"></i><span class="line"></span></div><div class="gauge-labels"><span>合格ライン 75%</span></div></div>
+    <div class="bycat">${cats}</div>
+    <div class="actions">${wrong.length ? `<button class="btn primary" type="button" id="retry-ng">まちがえた ${wrong.length} 問を解き直す</button>` : ""}
+      <button class="btn ${wrong.length ? "" : "primary"}" type="button" id="again">同じ問題を順番を変えてもう一度</button></div></section>
+    <section class="panel" aria-labelledby="h-review"><div class="panel-head"><h2 id="h-review">解答の振り返り</h2>
+      <div class="seg" role="group" aria-label="表示する問題"><button type="button" data-f="all" aria-pressed="${filter === "all"}">すべて ${s.total}</button><button type="button" data-f="ng" aria-pressed="${filter === "ng"}">まちがえた問題 ${wrong.length}</button></div></div>
+      <ol class="rows review-list">`;
+  r.ids.forEach((id, idx) => {
+    const a = r.ans[id];
+    if (filter === "ng" && a && a.ok) return;
+    const q = byId.get(id), order = r.perm[id] || q.choices.map((_, k) => k);
+    const mk = !a ? `<span class="mk none">−</span>` : a.ok ? `<span class="mk ok">○</span>` : `<span class="mk ng">×</span>`;
+    html += `<li><details data-id="${id}"><summary>${mk}<span class="n">${idx + 1}</span><span class="topic">${esc(q.topic)} <small>${esc(q.cat)}・No.${q.id}</small></span><span class="ans">あなた ${a ? lettersOf(a.sel, order) : "−"} ／ 正解 ${lettersOf(q.answer, order)}</span></summary><div class="review-body" data-idx="${idx}"></div></details></li>`;
+  });
+  html += `</ol>${filter === "ng" && !wrong.length ? `<p class="empty">まちがえた問題はありません。</p>` : ""}</section>`;
+  $("#main").innerHTML = html;
+  $("#to-home").addEventListener("click", () => navigate("home"));
+  const rn = $("#retry-ng"); if (rn) rn.addEventListener("click", () => startExam("ids", { ids: wrong, title: `解き直し：${r.title}` }));
+  $("#again").addEventListener("click", () => startExam("ids", { ids: r.ids, title: r.title }));
+  $("#main").querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => renderResult(r, b.dataset.f)));
+  // fill each review body when it is opened
+  $("#main").querySelectorAll("details[data-id]").forEach(d => d.addEventListener("toggle", () => {
+    const body = d.querySelector(".review-body");
+    if (!d.open || body.childElementCount) return;
+    const id = +d.dataset.id, q = byId.get(id), a = r.ans[id];
+    const order = r.perm[id] || q.choices.map((_, k) => k);
+    body.innerHTML = questionHead(q, `問 ${+body.dataset.idx + 1}`) + markedChoices(q, order, a ? a.sel : null) +
+      (a ? "" : `<div class="verdict none"><strong>未回答</strong><span>正解は ${lettersOf(q.answer, order)}</span></div>`) +
+      `<section class="exp"><h3>解説</h3>${md(q.exp)}</section>`;
+  }));
+}
+
+// ---------- keyboard ----------
+document.addEventListener("keydown", e => {
+  if (location.hash.slice(1) !== "quiz" || !current || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest && e.target.closest("input, textarea, select")) return;
+  const q = byId.get(current.ids[current.i]);
+  let pos = KEYS.indexOf(e.key.toUpperCase());
+  if (pos < 0 && /^[1-9]$/.test(e.key)) pos = +e.key - 1;
+  if (pos >= 0 && pos < q.choices.length) {
+    const b = document.querySelector(`#choices .choice[data-pos="${pos}"]`);
+    if (b) { e.preventDefault(); choose(q, +b.dataset.orig); }
+  } else if (e.key === "Enter") {
+    if (e.target.closest && e.target.closest("button, summary, a")) return;
+    e.preventDefault();
+    if (!current.ans[q.id] && q.answer.length > 1) submit(q); else if (current.ans[q.id]) step(1);
+  } else if (e.key === "ArrowRight") { if (current.i < current.ids.length - 1) step(1); }
+  else if (e.key === "ArrowLeft") step(-1);
+});
+
+// ---------- boot ----------
+$("#total").textContent = QUESTIONS.length;
+route();
+</script>
+</body>
+</html>

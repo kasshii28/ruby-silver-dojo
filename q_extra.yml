@@ -1,0 +1,906 @@
+- cat: 文法
+  topic: 予約語
+  q: 次のうち、Ruby の予約語であるものを2つ選択してください。
+  choices: ['`elsif`', '`loop`', '`unless`', '`raise`']
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 'begin; eval("elsif = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("loop = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("unless = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("raise = 1"); exit(false); rescue SyntaxError; exit(true); end'
+  exp: |
+    予約語は変数名などに使えない特別な単語です。`elsif` や `unless` は構文の一部なので予約語です。
+
+    `loop`、`raise`、`puts`、`require` などは**メソッド**であって予約語ではありません。そのため `loop = 1` のように変数名として使えてしまいます（紛らわしいので普通はしません）。
+
+    主な予約語：`alias` `and` `begin` `break` `case` `class` `def` `defined?` `do` `else` `elsif` `end` `ensure` `false` `for` `if` `in` `module` `next` `nil` `not` `or` `redo` `rescue` `retry` `return` `self` `super` `then` `true` `undef` `unless` `until` `when` `while` `yield`（ほかに `BEGIN` `END` `__FILE__` `__LINE__` `__ENCODING__`）
+
+- cat: 文法
+  topic: 変数名
+  q: 次のうち、ローカル変数名として使えないものを2つ選択してください。
+  choices: ['`1st_place`', '`_tmp`', '`is_valid?`', '`total2`']
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 'begin; eval("1st_place = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("_tmp = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("is_valid? = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("total2 = 1"); exit(false); rescue SyntaxError; exit(true); end'
+  exp: |
+    ローカル変数名は、**英小文字または `_` で始め**、あとは英数字と `_` だけで作ります。
+
+    - `1st_place` … 数字で始まっているので使えません。
+    - `is_valid?` … `?` や `!` はメソッド名の末尾にだけ付けられます。変数名には使えません。
+    - `_tmp` … `_` 始まりは使えます。
+    - `total2` … 数字は2文字目以降なら使えます。
+
+    なお、英大文字で始めると変数ではなく**定数**になります。
+
+- cat: 文法
+  topic: 真偽値
+  q: 次のうち、`if` の条件に置いたときに真として扱われるものを3つ選択してください。
+  choices: ['`0`', '`""`（空文字列）', '`nil`', '`[]`（空の配列）', '`false`']
+  answer: [0, 1, 3]
+  verify: checks
+  checks:
+    - 'exit(!!(0))'
+    - 'exit(!!(""))'
+    - 'exit(!!(nil))'
+    - 'exit(!!([]))'
+    - 'exit(!!(false))'
+  exp: |
+    Ruby で偽として扱われるのは **`nil` と `false` の2つだけ**で、それ以外はすべて真です。
+
+    `0`、空文字列 `""`、空の配列 `[]`、空のハッシュ `{}` も真になります。C 言語や JavaScript、Python の感覚で「0 や空は偽」と考えないよう注意しましょう。
+
+- cat: 文法
+  topic: 整数リテラルの基数
+  q: 次のうち、整数の `10` と等しい値になるリテラルを3つ選択してください。
+  choices: ['`0b1010`', '`0o10`', '`012`', '`0x10`', '`0xA`']
+  answer: [0, 2, 4]
+  verify: checks
+  checks:
+    - 'exit(0b1010 == 10)'
+    - 'exit(0o10 == 10)'
+    - 'exit(012 == 10)'
+    - 'exit(0x10 == 10)'
+    - 'exit(0xA == 10)'
+  exp: |
+    整数リテラルの接頭辞で基数が決まります。
+
+    | 接頭辞 | 基数 | 例 |
+    |---|---|---|
+    | `0b` | 2進数 | `0b1010` = 10 |
+    | `0`、`0o` | 8進数 | `012` = 10、`0o10` = 8 |
+    | `0x` | 16進数 | `0xA` = 10、`0x10` = 16 |
+
+    先頭が `0` だけの数（`012`）は**8進数**になる点が特によく問われます。
+
+- cat: 文法
+  topic: orと||の優先順位
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    x = nil
+    y = x __(1)__ "default"
+    puts y
+  result: default
+  choices: ['||', 'or', '&&', '||=']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    `x || "default"` は、`x` が偽なら `"default"` を返します。`y = x ||= "default"` も、代入の結果の `"default"` が `y` に入ります。
+
+    `or` は `=` より優先順位が低いので、`y = x or "default"` は `(y = x) or "default"` と読まれ、`y` は `nil` のままです。`&&` は `x` が偽なので `nil` になります。
+
+- cat: 文法
+  topic: '%記法（シンボルの配列）'
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = __(1)__
+    p a
+  result: '[:a, :b, :c]'
+  choices: ['%i[a b c]', '%w[a b c]', '[:a, :b, :c]', '%s[a b c]']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    `%i[...]` は、空白区切りの要素を**シンボル**の配列にします。`[:a, :b, :c]` と書いたものと同じです。
+
+    - `%w[...]` は文字列の配列（`["a", "b", "c"]`）
+    - `%s[...]` は1つのシンボル（`:"a b c"`）
+
+- cat: 文法
+  topic: 式展開ができる文字列リテラル
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    n = 3
+    puts __(1)__
+  result: 'n=3'
+  choices: ['"n=#{n}"', '''n=#{n}''', '%q(n=#{n})', '%Q(n=#{n})']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    式展開（`#{}`）が行われるのは、**ダブルクォート `"..."`** と **`%Q(...)`**（`%(...)` も同じ）です。
+
+    シングルクォート `'...'` と `%q(...)` は式展開もエスケープ（`\n` など）も行わず、書いたとおりの文字列になります。
+
+- cat: 文法
+  topic: 繰り返し（times / upto）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    __(1)__ do |i|
+      puts i
+    end
+  result: "0\n1\n2"
+  choices: ['3.times', '1.upto(3)', '0.upto(2)', '0.step(3)']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    `3.times` は `0, 1, 2` を順に渡します。`0.upto(2)` は 0 から 2 まで（2 を含む）渡します。
+
+    `1.upto(3)` は `1, 2, 3`、`0.step(3)` は `0, 1, 2, 3` を渡すので、出力が異なります。
+
+- cat: 文法
+  topic: キーワード引数（Ruby 3）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    def greet(name, greeting: "Hello")
+      "#{greeting}, #{name}"
+    end
+    puts greet("Ken", __(1)__)
+  result: 'Hi, Ken'
+  choices: ['greeting: "Hi"', '"Hi"', '{ greeting: "Hi" }', '**{ greeting: "Hi" }']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    キーワード引数は `greeting: "Hi"` のように名前を付けて渡します。ハッシュを `**` で展開して渡すこともできます。
+
+    Ruby 3 では、キーワード引数とハッシュは区別されます。`{ greeting: "Hi" }` のように波括弧で囲んだハッシュは**位置引数**として扱われ、引数の数が合わず `ArgumentError` になります（Ruby 2.x までは自動で変換されていました）。
+
+- cat: 文法
+  topic: ヒアドキュメント
+  q: ヒアドキュメントについて正しいものを2つ選択してください。
+  choices:
+    - '`<<~EOS` は、本文の各行に共通する先頭の空白を取り除く'
+    - '`<<-EOS` は、終端の `EOS` の前に空白を置いてもよい'
+    - '`<<EOS` は、終端の `EOS` の前に空白を置いてもよい'
+    - '`<<~EOS` では、式展開 `#{}` が行われない'
+  answer: [0, 1]
+  verify: checks
+  checks:
+    - |
+      s = <<~EOS
+          a
+            b
+      EOS
+      exit(s == "a\n  b\n")
+    - |
+      s = <<-EOS
+        x
+        EOS
+      exit(s == "  x\n")
+    - |
+      begin
+        eval("s = <<EOS\nx\n  EOS\n")
+        exit(true)
+      rescue SyntaxError
+        exit(false)
+      end
+    - |
+      n = 1
+      s = <<~EOS
+        #{n}
+      EOS
+      exit(s == "\#{n}\n")
+  exp: |
+    - `<<EOS` … 終端の識別子は**行頭**に書く必要があります。
+    - `<<-EOS` … 終端の識別子をインデントできます（本文のインデントはそのまま残ります）。
+    - `<<~EOS` … 終端をインデントでき、さらに本文の**共通インデントを取り除きます**。
+
+    `<<EOS`、`<<-EOS`、`<<~EOS` はいずれも式展開が行われます。式展開をしたくないときは `<<~'EOS'` のように識別子を**シングルクォートで囲みます**。
+
+- cat: 文法
+  topic: 整数の除算
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    p __(1)__
+  result: '3'
+  choices: ['7 / 2', '7.fdiv(2)', '7 % 4', '-7 / 2']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    整数どうしの `/` は商の整数部分（小数点以下は切り捨て）を返すので `7 / 2` は `3`、`7 % 4` は余りで `3` です。
+
+    `7.fdiv(2)` は `3.5`（Float の除算）です。`-7 / 2` は負の無限大方向に丸められて `-4` になります。
+
+- cat: 文法
+  topic: ハッシュリテラルの文法
+  q: ハッシュリテラルとして文法エラー（`SyntaxError`）になるものを2つ選択してください。
+  choices: ['{ 1: "a" }', '{ "a" => 1 }', '{ :a 1 }', '{ "a": 1 }']
+  answer: [0, 2]
+  cm: true
+  verify: checks
+  checks:
+    - |
+      begin
+        eval('{ 1: "a" }')
+        exit(false)
+      rescue SyntaxError
+        exit(true)
+      end
+    - |
+      begin
+        eval('{ "a" => 1 }')
+        exit(false)
+      rescue SyntaxError
+        exit(true)
+      end
+    - |
+      begin
+        eval('{ :a 1 }')
+        exit(false)
+      rescue SyntaxError
+        exit(true)
+      end
+    - |
+      begin
+        eval('{ "a": 1 }')
+        exit(false)
+      rescue SyntaxError
+        exit(true)
+      end
+  exp: |
+    `キー: 値` の形（`{ a: 1 }`）は、キーが**シンボル**になるときだけ使えます。数値の `1` をキーにするには `{ 1 => "a" }` と書きます。
+
+    `{ "a": 1 }` は、キーが文字列ではなく**シンボル `:a`** になる書き方で、文法エラーではありません。`{ :a 1 }` のように `=>` も `:` もないものは文法エラーです。
+
+- cat: 組み込みライブラリ
+  topic: Integer#chr
+  q: '`Integer#chr` について正しいものを2つ選択してください。'
+  choices:
+    - '`65.chr` は `"A"` を返す'
+    - '`256.chr` は `"Ā"` を返す'
+    - '`256.chr(Encoding::UTF_8)` は `"Ā"` を返す'
+    - '`65.chr` は `"65"` を返す'
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 'exit(65.chr == "A")'
+    - |
+      begin
+        exit(256.chr == "Ā")
+      rescue RangeError
+        exit(false)
+      end
+    - 'exit(256.chr(Encoding::UTF_8) == "Ā")'
+    - 'exit(65.chr == "65")'
+  exp: |
+    `Integer#chr` は、文字コードに対応する**1文字の文字列**を返します（`"A".ord` が逆の変換です）。
+
+    引数なしの `chr` が扱えるのは 0〜255 の範囲だけで、`256.chr` は `RangeError`（out of char range）になります。範囲を超える値は `256.chr(Encoding::UTF_8)` のようにエンコーディングを渡します。数値を文字列にしたいだけなら `to_s` です。
+
+- cat: 組み込みライブラリ
+  topic: メソッドの別名
+  q: 別名（エイリアス）の関係にあるメソッドの組み合わせを3つ選択してください。
+  choices:
+    - '`Array#push` と `Array#append`'
+    - '`Array#pop` と `Array#shift`'
+    - '`String#size` と `String#length`'
+    - '`Hash#each` と `Hash#each_key`'
+    - '`Integer#succ` と `Integer#next`'
+  answer: [0, 2, 4]
+  verify: checks
+  checks:
+    - 'exit(Array.instance_method(:push) == Array.instance_method(:append))'
+    - 'exit(Array.instance_method(:pop) == Array.instance_method(:shift))'
+    - 'exit(String.instance_method(:size) == String.instance_method(:length))'
+    - 'exit(Hash.instance_method(:each) == Hash.instance_method(:each_key))'
+    - 'exit(Integer.instance_method(:succ) == Integer.instance_method(:next))'
+  exp: |
+    よく出る別名の組み合わせです。
+
+    - `push` = `append`、`unshift` = `prepend`
+    - `size` = `length`
+    - `succ` = `next`
+    - `Hash#each` = `each_pair`
+
+    `pop`（末尾を取り出す）と `shift`（先頭を取り出す）、`each`（キーと値）と `each_key`（キーだけ）は別の動作です。
+
+- cat: 組み込みライブラリ
+  topic: Dirのクラスメソッド
+  q: Dir クラスのクラスメソッドとして存在するものを2つ選択してください。
+  choices: ['Dir.mkdir("tmp")', 'Dir.touch("tmp")', 'Dir.pwd', 'Dir.cd("tmp")']
+  answer: [0, 2]
+  cm: true
+  verify: checks
+  checks:
+    - 'exit(Dir.respond_to?(:mkdir))'
+    - 'exit(Dir.respond_to?(:touch))'
+    - 'exit(Dir.respond_to?(:pwd))'
+    - 'exit(Dir.respond_to?(:cd))'
+  exp: |
+    ディレクトリの操作でよく使うクラスメソッドです。
+
+    - `Dir.mkdir` … ディレクトリを作る
+    - `Dir.pwd` … カレントディレクトリを返す
+    - `Dir.chdir` … カレントディレクトリを移動する（`Dir.cd` ではありません）
+    - `Dir.entries` / `Dir.glob` … 中身の一覧を返す
+    - `Dir.exist?` … ディレクトリがあるか
+    - `Dir.rmdir` … 空のディレクトリを削除する
+
+    `touch` はファイル操作のコマンドで、Ruby の `Dir` にはありません。
+
+- cat: 組み込みライブラリ
+  topic: Dir.glob と Dir.entries
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    Dir.mkdir("work")
+    File.write("work/a.txt", "x")
+    File.write("work/b.rb", "y")
+    p Dir.glob("work/*.rb")
+    p Dir.entries("work").sort
+    p Dir.exist?("work")
+  choices:
+    - |-
+      ["work/b.rb"]
+      [".", "..", "a.txt", "b.rb"]
+      true
+    - |-
+      ["b.rb"]
+      ["a.txt", "b.rb"]
+      true
+    - |-
+      ["work/b.rb"]
+      ["a.txt", "b.rb"]
+      true
+    - |-
+      ["work/b.rb"]
+      [".", "..", "a.txt", "b.rb"]
+      false
+  answer: [0]
+  verify: output
+  exp: |
+    - `Dir.glob("work/*.rb")` は、指定したパターンに合うパスを配列で返します。パスは渡したパターンの形（`work/` 付き）のままです。
+    - `Dir.entries` は、**`.`（自分）と `..`（親）も含めた**ディレクトリ内の名前を返します。順序は保証されないので、この例では `sort` しています。
+    - `Dir.exist?` はディレクトリがあれば `true` です。
+
+- cat: 組み込みライブラリ
+  topic: require
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを1つ選択してください。'
+  code: |
+    __(1)__
+    puts({ a: 1 }.to_json)
+  result: '{"a":1}'
+  choices: ['require "json"', 'require_relative "json"', 'include "json"', 'import "json"']
+  answer: [0]
+  verify: blank
+  exp: |
+    `to_json` は標準ライブラリ `json` が追加するメソッドなので、`require "json"` で読み込む必要があります。`require` に渡す名前には、拡張子 `.rb` を付けなくてかまいません。
+
+    - `require_relative` は自分のファイルからの相対パスで**自作ファイル**を読み込むためのものです。
+    - `include` は `Module` を取り込むメソッドで、文字列は渡せません。
+    - `import` は Ruby にはありません。
+
+- cat: 組み込みライブラリ
+  topic: require と load
+  q: '`require`、`require_relative`、`load` について正しいものを2つ選択してください。'
+  choices:
+    - '`require` は、同じファイルを2回目以降は読み込まない'
+    - '`require_relative` は、プログラムを実行したディレクトリ（カレントディレクトリ）からの相対パスで探す'
+    - '`load` は、呼び出すたびにファイルを読み込み直す'
+    - '`require` に渡すファイル名には、必ず拡張子 `.rb` を付けなければならない'
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - |
+      File.write("lib1.rb", "$cnt = ($cnt || 0) + 1\n")
+      require "./lib1.rb"
+      require "./lib1.rb"
+      exit($cnt == 1)
+    - |
+      Dir.mkdir("sub")
+      File.write("sub/helper.rb", "X = 1\n")
+      File.write("sub/main.rb", "require_relative 'helper'\nputs X\n")
+      ok = system("ruby", "sub/main.rb", out: File::NULL, err: File::NULL)
+      exit(!ok)
+    - |
+      File.write("lib2.rb", "$c = ($c || 0) + 1\n")
+      load "./lib2.rb"
+      load "./lib2.rb"
+      exit($c == 2)
+    - |
+      begin
+        require "json"
+        exit(false)
+      rescue LoadError
+        exit(true)
+      end
+  exp: |
+    - `require` … 一度読み込んだファイルは覚えていて、2回目以降は読み込みません（戻り値は `false`）。拡張子 `.rb` は省略できます。
+    - `require_relative` … **そのコードを書いたファイルの場所**からの相対パスで探します。実行した場所（カレントディレクトリ）ではありません。
+    - `load` … 呼び出すたびに読み込み直します。拡張子まで含めたファイル名を書きます。
+
+- cat: 組み込みライブラリ
+  topic: 正規表現のアンカー
+  q: 次のコードの後で、`nil` ではなく数値（マッチした位置）を返す式を2つ選択してください。
+  code: |
+    str = "ruby\nsilver"
+  choices: ['str =~ /^silver/', 'str =~ /\Asilver/', 'str =~ /ruby$/', 'str =~ /ruby\z/']
+  answer: [0, 2]
+  cm: true
+  verify: checks
+  checks:
+    - 'exit(!!(str =~ /^silver/))'
+    - 'exit(!!(str =~ /\Asilver/))'
+    - 'exit(!!(str =~ /ruby$/))'
+    - 'exit(!!(str =~ /ruby\z/))'
+  exp: |
+    Ruby の正規表現では、アンカーの意味が行単位と文字列全体で分かれています。
+
+    | | 行 | 文字列全体 |
+    |---|---|---|
+    | 先頭 | `^` | `\A` |
+    | 末尾 | `$` | `\z`（`\Z` は末尾の改行の手前も許す） |
+
+    `str` は改行を含む2行の文字列なので、2行目の先頭にマッチする `^silver` と、1行目の末尾にマッチする `ruby$` が成立します。`\A` と `\z` は文字列全体の先頭・末尾なので、どちらも不成立です。
+
+- cat: 組み込みライブラリ
+  topic: 正規表現（完全一致）
+  q: '正規表現 `/\A\d+-\d+\z/` にマッチする文字列を2つ選択してください。'
+  choices: ['`"12-345"`', '`"12 - 34"`', '`"007-8"`', '`"-12-34"`']
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 'exit("12-345".match?(/\A\d+-\d+\z/))'
+    - 'exit("12 - 34".match?(/\A\d+-\d+\z/))'
+    - 'exit("007-8".match?(/\A\d+-\d+\z/))'
+    - 'exit("-12-34".match?(/\A\d+-\d+\z/))'
+  exp: |
+    `\d+` は数字の1文字以上の連続、`-` はそのままのハイフンです。`\A` と `\z` で文字列全体を囲んでいるので、「数字 - 数字」だけの文字列にマッチします。
+
+    `"12 - 34"` は空白が入っているので、`"-12-34"` は先頭が数字ではないので、マッチしません。
+
+- cat: 組み込みライブラリ
+  topic: Array（範囲指定の取り出し）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = [1, 2, 3, 4, 5]
+    p __(1)__
+  result: '[1, 2, 3]'
+  choices: ['a[0, 3]', 'a[0..3]', 'a[1, 3]', 'a[0...3]']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    - `a[開始位置, 個数]` … 開始位置から指定した個数を取り出します（`a[0, 3]` → 先頭から3個）。
+    - `a[開始..終了]` … 終了位置を**含みます**（`a[0..3]` は4個）。
+    - `a[開始...終了]` … 終了位置を**含みません**（`a[0...3]` は3個）。
+
+- cat: 組み込みライブラリ
+  topic: Array（破壊的な取り出し）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = [10, 20, 30, 40]
+    a.__(1)__
+    p a
+  result: '[20, 30, 40]'
+  choices: ['shift', 'first', 'drop(1)', 'delete_at(0)']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    `a` 自身から先頭を取り除くのは、`shift` と `delete_at(0)` です。
+
+    `first` は先頭の要素を返すだけ、`drop(1)` は先頭を除いた**新しい配列**を返すだけで、どちらも `a` は変わりません。
+
+- cat: 組み込みライブラリ
+  topic: Array（結合と重複の除去）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = [1, 2, 2]
+    b = [2, 3]
+    p __(1)__
+  result: '[1, 2, 3]'
+  choices: ['a | b', 'a & b', 'a - b', '(a + b).uniq']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    - `a | b` … 和集合（重複を除いて結合）。`[1, 2, 3]`
+    - `(a + b).uniq` … 連結してから重複を除く。同じく `[1, 2, 3]`
+    - `a & b` … 積集合（両方にあるもの）。`[2]`
+    - `a - b` … 差集合（`a` にあって `b` にないもの）。`[1]`
+
+- cat: 組み込みライブラリ
+  topic: sort（降順）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = [2, 3, 1]
+    p __(1)__
+  result: '[3, 2, 1]'
+  choices: ['a.sort.reverse', 'a.sort { |x, y| x <=> y }', 'a.reverse', 'a.sort { |x, y| y <=> x }']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    降順にするには、昇順に並べてから `reverse` するか、ブロックで比較の左右を入れ替えます（`y <=> x`）。
+
+    `x <=> y` は昇順（`[1, 2, 3]`）です。`reverse` だけでは、並べ替えずに逆順にするだけなので `[1, 3, 2]` になります。
+
+- cat: 組み込みライブラリ
+  topic: select / reject
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    a = [1, 2, 3, 4, 5, 6]
+    p __(1)__
+  result: '[2, 4, 6]'
+  choices: ['a.select(&:even?)', 'a.find(&:even?)', 'a.map(&:even?)', 'a.reject(&:odd?)']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    - `select` … ブロックが真になる要素を**すべて**集める。
+    - `reject` … ブロックが真になる要素を**除いて**残りを返す（`select` の反対）。
+    - `find` … 最初の1つだけ（`2`）。
+    - `map` … 各要素をブロックの結果に変換する（`[false, true, false, ...]`）。
+
+- cat: 組み込みライブラリ
+  topic: Hash（キーの存在確認）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されない（エラーになる）ものを2つ選択してください。'
+  code: |
+    h = { a: 1 }
+    p __(1)__
+  result: 'true'
+  choices: ['h.key?(:a)', 'h.has_key?(:a)', 'h.include?(:a)', 'h.contain?(:a)', 'h.exist?(:a)']
+  answer: [3, 4]
+  verify: blank
+  negate: true
+  exp: |
+    ハッシュにキーがあるか調べるメソッドは、`key?`、`has_key?`、`include?`、`member?` です（すべて同じ動作）。
+
+    `contain?` と `exist?` というメソッドは存在せず、`NoMethodError` になります。値があるかを調べるのは `value?`（`has_value?`）です。
+
+- cat: 組み込みライブラリ
+  topic: Hash（値の合計）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    h = { a: 1, b: 2 }
+    p __(1)__
+  result: '3'
+  choices: ['h.values.sum', 'h.sum', 'h.keys.sum', 'h.sum { |_, v| v }']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    値の合計を求めるには、`values` で値の配列にして `sum` するか、`sum` にブロックを渡して値を取り出します。
+
+    ブロックなしの `h.sum` は `[キー, 値]` の配列を足そうとして `TypeError` になります。`h.keys.sum` はシンボルを足そうとして `TypeError` になります。
+
+- cat: 組み込みライブラリ
+  topic: String（接尾辞の削除）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    s = "ruby_silver.rb"
+    puts s.__(1)__
+  result: 'ruby_silver'
+  choices: ['delete_suffix(".rb")', 'chomp(".rb")', 'delete(".rb")', 'chop']
+  answer: [0, 1]
+  verify: blank
+  exp: |
+    - `delete_suffix(str)` … 末尾が `str` なら取り除く。
+    - `chomp(str)` … 引数を渡すと、末尾が `str` ならそれを取り除く（引数なしは末尾の改行）。
+    - `delete(".rb")` … `.`、`r`、`b` の**各文字**をすべて取り除く（`"uy_silve"` になる）。
+    - `chop` … 最後の1文字を取り除く。
+
+- cat: 組み込みライブラリ
+  topic: inject
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    r = [3, 9, 4].inject { |m, x| __(1)__ }
+    p r
+  result: '9'
+  choices: ['m > x ? m : x', '[m, x].max', 'm + x', 'x']
+  answer: [0, 1]
+  verify: blank
+  exp: |
+    `inject` は、ブロックの結果を次の繰り返しの第1引数（`m`）に渡していきます。
+
+    `m > x ? m : x` や `[m, x].max` は、大きいほうを残すので最大値の `9` になります。`m + x` は合計の `16`、`x` は最後の要素の `4` です。
+
+- cat: 組み込みライブラリ
+  topic: ファイルのオープンモード（追記）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    File.write("log.txt", "a\n")
+    File.open("log.txt", "__(1)__") { |f| f.puts "b" }
+    puts File.read("log.txt")
+  result: "a\nb"
+  choices: ['a', 'w', 'r', 'a+']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    ファイルを開くときの主なモードです。
+
+    | モード | 動作 |
+    |---|---|
+    | `r` | 読み込み専用（既定）。書き込むと `IOError` |
+    | `w` | 書き込み。**内容を消して**から書く（なければ作る） |
+    | `a` | 追記。末尾に書き足す（なければ作る） |
+    | `r+` | 読み書き。内容は消さず、先頭から上書き |
+    | `w+` | 読み書き。内容を消す |
+    | `a+` | 読み書き。書き込みは末尾に追記 |
+
+- cat: 組み込みライブラリ
+  topic: ファイルのオープンモード（上書き）
+  q: '__(1)__ に記述したとき、〔実行結果〕が出力されるものを2つ選択してください。'
+  code: |
+    File.write("t.txt", "abc")
+    File.open("t.txt", "__(1)__") { |f| f.write("X") }
+    puts File.read("t.txt")
+  result: 'X'
+  choices: ['w', 'a', 'r+', 'w+']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    `w` と `w+` は、開いた時点でファイルの**内容を空にする**ので、書き込んだ `X` だけが残ります。
+
+    `a` は末尾に追記するので `abcX`、`r+` は内容を消さずに先頭から上書きするので `Xbc` になります。
+
+- cat: 組み込みライブラリ
+  topic: 読み込み専用で書き込む
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    File.write("note.txt", "hello")
+    File.open("note.txt") do |f|
+      f.write("!")
+    end
+  choices:
+    - '`IOError` が発生する'
+    - '`Errno::ENOENT` が発生する'
+    - '`note.txt` の末尾に `!` が追記される'
+    - '`note.txt` の内容が `!` に置き換わる'
+  answer: [0]
+  verify: run
+  expect: {error: IOError}
+  exp: |
+    モードを省略した `File.open` は読み込み専用（`"r"`）です。読み込み専用のファイルに `write` すると `IOError`（not opened for writing）になります。
+
+    ファイルは先に `File.write` で作られているので、`Errno::ENOENT`（ファイルがない）にはなりません。書き込むには `"w"` や `"a"` を指定します。
+
+- cat: 組み込みライブラリ
+  topic: ファイルを1行ずつ読む
+  q: ファイル `data.txt` を1行ずつ処理できるものを2つ選択してください。
+  choices:
+    - '`File.foreach("data.txt") { |line| ... }`'
+    - '`File.read("data.txt") { |line| ... }`'
+    - '`File.open("data.txt") { |f| f.each_line { |line| ... } }`'
+    - '`File.readlines("data.txt") { |line| ... }`'
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - |
+      File.write("data.txt", "a\nb\n")
+      c = 0
+      File.foreach("data.txt") { |line| c += 1 }
+      exit(c == 2)
+    - |
+      File.write("data.txt", "a\nb\n")
+      c = 0
+      File.read("data.txt") { |line| c += 1 }
+      exit(c == 2)
+    - |
+      File.write("data.txt", "a\nb\n")
+      c = 0
+      File.open("data.txt") { |f| f.each_line { |line| c += 1 } }
+      exit(c == 2)
+    - |
+      File.write("data.txt", "a\nb\n")
+      c = 0
+      File.readlines("data.txt") { |line| c += 1 }
+      exit(c == 2)
+  exp: |
+    1行ずつブロックに渡せるのは `File.foreach` と、開いたファイルの `each_line`（`IO#each_line`）です。
+
+    `File.read` は全体を1つの文字列で、`File.readlines` は全行の配列で返すメソッドで、ブロックを渡しても1行ずつ呼び出されることはありません（ブロックは無視されます）。
+
+- cat: 組み込みライブラリ
+  topic: IO#rewind
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    File.write("d.txt", "1\n2\n3\n")
+    File.open("d.txt") do |f|
+      p f.gets
+      f.rewind
+      p f.gets
+      p f.read
+    end
+  choices:
+    - |-
+      "1\n"
+      "1\n"
+      "2\n3\n"
+    - |-
+      "1\n"
+      "2\n"
+      "3\n"
+    - |-
+      "1\n"
+      "1\n"
+      "1\n2\n3\n"
+    - |-
+      "1\n"
+      "1\n"
+      nil
+  answer: [0]
+  verify: output
+  exp: |
+    ファイルには「読み込み位置」があり、`gets` や `read` を呼ぶたびに進みます。`rewind` は、その位置を**先頭に戻します**。
+
+    1回目の `gets` で `"1\n"`、`rewind` で先頭に戻り、2回目の `gets` でもう一度 `"1\n"` が返ります。その後の `read` は、現在位置（2行目の先頭）から最後までを返すので `"2\n3\n"` です。
+
+- cat: 組み込みライブラリ
+  topic: Fileクラスの判定メソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    Dir.mkdir("docs")
+    File.write("docs/a.txt", "abc")
+    p File.file?("docs")
+    p File.directory?("docs")
+    p File.size("docs/a.txt")
+    p File.extname("docs/a.txt")
+  choices:
+    - |-
+      false
+      true
+      3
+      ".txt"
+    - |-
+      true
+      true
+      3
+      ".txt"
+    - |-
+      false
+      true
+      3
+      "txt"
+    - |-
+      false
+      true
+      "abc"
+      ".txt"
+  answer: [0]
+  verify: output
+  exp: |
+    - `File.file?` … **通常のファイル**なら `true`（ディレクトリは `false`）
+    - `File.directory?` … ディレクトリなら `true`
+    - `File.size` … ファイルのサイズ（バイト数）。`"abc"` は3バイトです。
+    - `File.extname` … 拡張子（ドットを含む）
+
+- cat: オブジェクト指向
+  topic: アクセス制御
+  q: 次のコードの後で、エラーにならずに実行できるものを2つ選択してください。
+  code: |
+    class Foo
+      def pub; end
+      private
+      def pri; end
+      protected
+      def pro; end
+    end
+    obj = Foo.new
+  choices: ['obj.pub', 'obj.pri', 'obj.pro', 'obj.send(:pri)']
+  answer: [0, 3]
+  cm: true
+  verify: checks
+  checks:
+    - 'obj.pub'
+    - 'obj.pri'
+    - 'obj.pro'
+    - 'obj.send(:pri)'
+  exp: |
+    - `public` … どこからでも呼べます。
+    - `private` … レシーバを付けて外から呼べません（`obj.pri` は `NoMethodError`）。
+    - `protected` … 同じクラス（サブクラス）のメソッドの中からだけレシーバ付きで呼べます。クラスの外からの `obj.pro` は `NoMethodError` です。
+
+    `send` はアクセス制御を無視して呼び出せるので、`obj.send(:pri)` は実行できます。外から private メソッドを呼べないようにしたいときは、`public_send` を使います。
+
+- cat: オブジェクト指向
+  topic: クラスメソッドにするMix-in
+  q: クラス `C` の定義の中に次のいずれかを書いたとき、`C.hello` とクラスメソッドとして呼び出せるものを2つ選択してください。
+  code: |
+    module M
+      def hello
+        "hello"
+      end
+    end
+  choices: ['extend M', 'include M', 'prepend M', 'class << self; include M; end']
+  answer: [0, 3]
+  cm: true
+  verify: checks
+  checks:
+    - 'class C; extend M; end; C.hello'
+    - 'class C; include M; end; C.hello'
+    - 'class C; prepend M; end; C.hello'
+    - 'class C; class << self; include M; end; end; C.hello'
+  exp: |
+    `extend M` は、モジュールのメソッドを**クラスの特異メソッド**（＝クラスメソッド）として追加します。`class << self; include M; end` も、クラスの特異クラスに `include` するので、同じ結果になります。
+
+    `include M` と `prepend M` は**インスタンスメソッド**として取り込むので、`C.new.hello` なら呼べますが `C.hello` は `NoMethodError` です。
+
+- cat: オブジェクト指向
+  topic: superに渡される引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      def show(a, b = 2)
+        puts "#{a}:#{b}"
+      end
+    end
+    class Child < Parent
+      def show(a, b = 5)
+        super
+        super(a)
+      end
+    end
+    Child.new.show(1)
+  choices:
+    - |-
+      1:5
+      1:2
+    - |-
+      1:2
+      1:2
+    - |-
+      1:5
+      1:5
+    - |-
+      1:2
+      1:5
+  answer: [0]
+  verify: output
+  exp: |
+    引数なしの `super`（括弧なし）は、**今のメソッドの引数の現在の値**をそのまま親に渡します。`b` は省略されたので既定値 `5` が入っていて、親には `(1, 5)` が渡されます。
+
+    `super(a)` のように引数を明示すると、渡した引数だけが親に渡るので、親の `b` は親側の既定値 `2` になります。なお `super()`（空の括弧）は「引数なし」で呼びます。
+
+- cat: オブジェクト指向
+  topic: is_a? と instance_of?
+  q: 次のうち、`true` を返す式を2つ選択してください。
+  choices: ['5.is_a?(Numeric)', '5.instance_of?(Numeric)', '"a".is_a?(Integer)', 'nil.instance_of?(NilClass)']
+  answer: [0, 3]
+  cm: true
+  verify: checks
+  checks:
+    - 'exit(5.is_a?(Numeric))'
+    - 'exit(5.instance_of?(Numeric))'
+    - 'exit("a".is_a?(Integer))'
+    - 'exit(nil.instance_of?(NilClass))'
+  exp: |
+    - `is_a?`（`kind_of?`）… そのクラス、または**祖先のクラス・モジュール**のインスタンスなら `true`。
+    - `instance_of?` … **そのクラスそのもの**のインスタンスのときだけ `true`（継承は考えません）。
+
+    `5` は `Integer` のインスタンスで、`Integer` の親が `Numeric` です。そのため `5.is_a?(Numeric)` は `true`、`5.instance_of?(Numeric)` は `false` になります。
+
+- cat: オブジェクト指向
+  topic: Comparableで使えるメソッド
+  q: 次のコードの後で、エラーにならずに実行できるものを3つ選択してください。
+  code: |
+    class Ver
+      include Comparable
+      attr_reader :n
+      def initialize(n)
+        @n = n
+      end
+      def <=>(other)
+        n <=> other.n
+      end
+    end
+    a, b, c = Ver.new(1), Ver.new(2), Ver.new(3)
+  choices: ['a < b', 'b.between?(a, c)', 'b.clamp(a, c)', 'a.each { }']
+  answer: [0, 1, 2]
+  cm: true
+  verify: checks
+  checks:
+    - 'a < b'
+    - 'b.between?(a, c)'
+    - 'b.clamp(a, c)'
+    - 'a.each { }'
+  exp: |
+    `Comparable` をインクルードして `<=>` を定義すると、`<`、`<=`、`>`、`>=`、`==`、`between?`、`clamp` が使えるようになります。
+
+    `each` は `Enumerable`（またはクラス自身）が提供するメソッドで、`Comparable` とは関係がないので `NoMethodError` になります。

@@ -1,0 +1,1033 @@
+# 組み込みライブラリ（追加分）
+- cat: 組み込みライブラリ
+  topic: String（sub / gsub）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "hello"
+    p s.gsub(/[el]/, "e" => "3", "l" => "1")
+    p s.gsub(/l/) { |m| m.upcase }
+    p s.sub(/l+/, "L")
+  choices: ["\"h311o\"\n\"heLLo\"\n\"heLo\"", "\"h3llo\"\n\"heLlo\"\n\"heLlo\"", "\"h311o\"\n\"heLLo\"\n\"heLLo\"", "\"h311o\"\n\"heLlo\"\n\"heLo\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `gsub` はマッチした部分をすべて置換し、`sub` は最初の1か所だけ置換します。
+
+    置換後の文字列の代わりにハッシュを渡すと、マッチした文字列をキーとして値に置き換えます。ブロックを渡すと、ブロックの戻り値で置き換えます。`/l+/` は連続する `ll` 全体にマッチするので、`sub` の結果は `"heLo"` です。
+
+- cat: 組み込みライブラリ
+  topic: String（count / squeeze / delete / tr）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "bookkeeper"
+    p s.count("e")
+    p s.squeeze
+    p s.delete("o")
+    p s.tr("ok", "OK")
+  choices: ["3\n\"bokeper\"\n\"bkkeeper\"\n\"bOOKKeeper\"", "3\n\"bookkeeper\"\n\"bkkeeper\"\n\"bOOKKeeper\"", "1\n\"bokeper\"\n\"bokkeeper\"\n\"bOOKKeeper\"", "3\n\"bokeper\"\n\"bkkeeper\"\n\"bOKkeeper\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `count("e")` … 指定した文字が何回現れるか
+    - `squeeze` … 連続する同じ文字を1文字にまとめる
+    - `delete("o")` … 指定した文字をすべて削除する
+    - `tr("ok", "OK")` … `o` を `O`、`k` を `K` に1文字ずつ置き換える
+
+- cat: 組み込みライブラリ
+  topic: String（検索）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "ruby on rails"
+    p s.index("r")
+    p s.rindex("r")
+    p s.index("x")
+    p s.start_with?("ruby"), s.end_with?("rail")
+  choices: ["0\n8\nnil\ntrue\nfalse", "0\n8\n-1\ntrue\nfalse", "1\n9\nnil\ntrue\nfalse", "0\n8\nnil\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `index` は最初に見つかった位置、`rindex` は最後に見つかった位置を返します（先頭は 0）。見つからなければ `nil` です（`-1` ではありません）。
+
+    `start_with?` / `end_with?` は指定した文字列で始まる・終わるかを返します。末尾は `rails` なので `end_with?("rail")` は `false` です。
+
+- cat: 組み込みライブラリ
+  topic: String（大文字・小文字）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "hELLO wORLD"
+    p s.capitalize
+    p s.swapcase
+    p s.downcase.split.map(&:capitalize).join(" ")
+  choices: ["\"Hello world\"\n\"Hello World\"\n\"Hello World\"", "\"HELLO wORLD\"\n\"Hello World\"\n\"Hello World\"", "\"Hello World\"\n\"Hello World\"\n\"Hello World\"", "\"Hello world\"\n\"HELLO WORLD\"\n\"Hello world\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `capitalize` … 先頭だけ大文字にし、残りはすべて小文字にする
+    - `swapcase` … 大文字と小文字を入れ替える
+    - `upcase` / `downcase` … すべて大文字 / 小文字にする
+
+    単語ごとに先頭を大文字にしたいときは、`split` で分けてから `capitalize` します。
+
+- cat: 組み込みライブラリ
+  topic: String#succ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "az".succ
+    p "zz".succ
+    p "a9".succ
+    p 9.succ
+  choices: ["\"ba\"\n\"aaa\"\n\"b0\"\n10", "\"b\"\n\"aa\"\n\"a10\"\n10", "\"ba\"\n\"za\"\n\"b0\"\n10", "\"aaa\"\n\"aaa\"\n\"b0\"\n\"10\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `String#succ`（別名 `next`）は「次の」文字列を返します。末尾の文字を1つ進め、`z` や `9` を超えると繰り上がります（`"az"` → `"ba"`、`"zz"` → `"aaa"`、`"a9"` → `"b0"`）。
+
+    `Integer#succ` は 1 を足した整数を返します。`("a".."e")` のような文字列の範囲もこの `succ` で要素を作っています。
+
+- cat: 組み込みライブラリ
+  topic: String（文字単位の操作）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "ruby"
+    p s.reverse
+    p s.chars.sort.join
+    p s.chars.map(&:ord).sum
+  choices: ["\"ybur\"\n\"bruy\"\n450", "\"ybur\"\n\"bruy\"\n\"ruby\"", "\"ybur\"\n[\"b\", \"r\", \"u\", \"y\"]\n450", "\"ruby\"\n\"bruy\"\n450"]
+  answer: [0]
+  verify: output
+  exp: |
+    `reverse` は文字を逆順にした文字列を返します。`chars` で1文字ずつの配列にすると、配列のメソッド（`sort`、`map` など）が使え、`join` で文字列に戻せます。
+
+    `ord` は文字コードを返すので、`r`(114) + `u`(117) + `b`(98) + `y`(121) = 450 です。
+
+- cat: 組み込みライブラリ
+  topic: String（部分の書き換え）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "Hello World"
+    s[0] = "J"
+    p s
+    t = s.slice!(5..)
+    p s, t
+  choices: ["\"Jello World\"\n\"Jello\"\n\" World\"", "\"Jello World\"\n\"Jello World\"\n\" World\"", "\"Hello World\"\n\"Hello\"\n\" World\"", "\"Jello World\"\n\" World\"\n\"Jello\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `s[位置] = 文字列` で、その部分を置き換えられます（破壊的）。
+
+    `slice!` は指定した部分を取り出して返し、レシーバからはその部分を削除します。`slice`（`!` なし）なら取り出すだけでレシーバは変わりません。
+
+- cat: 組み込みライブラリ
+  topic: String#split（空要素）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "a,b,,c,,".split(",")
+    p "a,b,,c,,".split(",", -1)
+    p "a b  c".split(" ")
+    p "a b  c".split(/ /)
+  choices:
+    - |-
+      ["a", "b", "", "c"]
+      ["a", "b", "", "c", "", ""]
+      ["a", "b", "c"]
+      ["a", "b", "", "c"]
+    - |-
+      ["a", "b", "c"]
+      ["a", "b", "c"]
+      ["a", "b", "c"]
+      ["a", "b", "c"]
+    - |-
+      ["a", "b", "", "c", "", ""]
+      ["a", "b", "", "c", "", ""]
+      ["a", "b", "c"]
+      ["a", "b", "", "c"]
+    - |-
+      ["a", "b", "", "c"]
+      ["a", "b", "", "c", "", ""]
+      ["a", "b", "", "c"]
+      ["a", "b", "", "c"]
+  answer: [0]
+  verify: output
+  exp: |
+    `split` は途中の空文字列は残しますが、末尾の空文字列は取り除きます。第2引数に負の数を渡すと末尾の空文字列も残ります。
+
+    区切りに半角空白1つの文字列 `" "` を渡したときだけ特別扱いで、連続する空白をまとめて区切ります。正規表現 `/ /` で区切ると、連続する空白の間に空文字列ができます。
+
+- cat: 組み込みライブラリ
+  topic: MatchData（名前付きキャプチャ）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    m = "2024-03-05".match(/(?<y>\d+)-(?<m>\d+)-(?<d>\d+)/)
+    p m[:y]
+    p m[2]
+    p m.pre_match
+    p "abc".match?(/b/)
+  choices: ["\"2024\"\n\"03\"\n\"\"\ntrue", "\"2024\"\n\"2024\"\nnil\ntrue", "2024\n3\n\"\"\n1", "\"2024\"\n\"03\"\n\"\"\n1"]
+  answer: [0]
+  verify: output
+  exp: |
+    `(?<名前>...)` で名前付きキャプチャを書くと、MatchData から `m[:名前]` で取り出せます。番号（`m[2]`）でも取り出せ、値は文字列です。
+
+    `pre_match` はマッチした部分より前の文字列（ここでは空文字列）です。`match?` はマッチするかどうかだけを `true` / `false` で返します。
+
+- cat: 組み込みライブラリ
+  topic: String#scan（グループあり）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "a1b22c333".scan(/[a-z]\d+/)
+    p "a1b22c333".scan(/([a-z])(\d+)/)
+  choices:
+    - |-
+      ["a1", "b22", "c333"]
+      [["a", "1"], ["b", "22"], ["c", "333"]]
+    - |-
+      ["a1", "b22", "c333"]
+      ["a", "1", "b", "22", "c", "333"]
+    - |-
+      ["a1"]
+      [["a", "1"]]
+    - |-
+      ["a1", "b22", "c333"]
+      ["a1", "b22", "c333"]
+  answer: [0]
+  verify: output
+  exp: |
+    `scan` はマッチした部分をすべて配列で返します。正規表現にグループ `()` が含まれる場合は、マッチ全体ではなく各グループの文字列をまとめた配列の配列を返します。
+
+- cat: 組み込みライブラリ
+  topic: 書式指定（配列・符号・指数）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    puts "%s is %d years" % ["Ruby", 31]
+    puts "%+d %+d" % [5, -5]
+    puts "%.2e" % 12345.678
+  choices: ["Ruby is 31 years\n+5 -5\n1.23e+04", "Ruby is 31 years\n5 -5\n12345.68", '!1行目で `ArgumentError` が発生する', "Ruby is 31 years\n+5 +-5\n1.23e+04"]
+  answer: [0]
+  verify: output
+  exp: |
+    書式の中に指定子が複数あるときは、`%` の右辺に配列を渡します。
+
+    `%+d` は正の数にも `+` を付けます。`%.2e` は指数表記で小数点以下2桁です（12345.678 → `1.23e+04`）。
+
+- cat: 組み込みライブラリ
+  topic: String（行・文字の列挙）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    text = "a\nbb\nccc"
+    p text.lines
+    p text.lines.map(&:chomp).map(&:size)
+    p text.each_char.count { |c| c == "c" }
+  choices:
+    - |-
+      ["a\n", "bb\n", "ccc"]
+      [1, 2, 3]
+      3
+    - |-
+      ["a", "bb", "ccc"]
+      [1, 2, 3]
+      3
+    - |-
+      ["a\n", "bb\n", "ccc"]
+      [2, 3, 3]
+      3
+    - |-
+      ["a\n", "bb\n", "ccc\n"]
+      [1, 2, 3]
+      1
+  answer: [0]
+  verify: output
+  exp: |
+    `lines` は行ごとの配列を返し、各要素には改行文字が残ります（最後の行は元の文字列に改行がないので付きません）。改行を除くには `chomp` します。
+
+    `each_char` はブロックなしで Enumerator を返すので、そのまま `count` などをつなげられます。
+
+- cat: 組み込みライブラリ
+  topic: Symbol
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "hello world".to_sym
+    p :abc.size
+    p :abc.upcase
+    p :b.between?(:a, :c)
+  choices: [":\"hello world\"\n3\n:ABC\ntrue", ":hello_world\n3\n:ABC\ntrue", ":\"hello world\"\n3\n\"ABC\"\ntrue", '!1行目で `ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `to_sym` は文字列をシンボルに変換します。空白を含むシンボルは `:"hello world"` と表示されます。
+
+    シンボルにも `size`、`upcase` など文字列に似たメソッドがあり、`upcase` の結果はシンボルです。シンボルは `Comparable` をインクルードしているので `between?` も使えます。
+
+- cat: 組み込みライブラリ
+  topic: Array（先頭・末尾の取り出し）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [5, 3, 8, 1, 9]
+    p a.first(2)
+    p a.last
+    p a.drop(3)
+    p a.take_while { |x| x > 2 }
+    p a.drop_while { |x| x > 2 }
+  choices: ["[5, 3]\n9\n[1, 9]\n[5, 3, 8]\n[1, 9]", "[5, 3]\n[9]\n[1, 9]\n[5, 3, 8, 9]\n[1]", "[5, 3]\n9\n[5, 3, 8]\n[5, 3, 8]\n[1, 9]", "5\n9\n[1, 9]\n[5, 3, 8]\n[1, 9]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `first(n)` / `last(n)` … 先頭 / 末尾から n 個（引数なしなら要素1つ）
+    - `take(n)` / `drop(n)` … 先頭から n 個を取る / 捨てる
+    - `take_while` … ブロックが真の間、先頭から取る（偽になった時点で終了）
+    - `drop_while` … ブロックが真の間、先頭から捨てて残りを返す
+
+    `take_while` は `1` で偽になるので、その後ろの `9` は含まれません。
+
+- cat: 組み込みライブラリ
+  topic: Array（数える・探す）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [1, 2, 3, 2, 1]
+    p a.count
+    p a.count(2)
+    p a.count(&:odd?)
+    p a.index(2), a.rindex(2)
+  choices: ["5\n2\n3\n1\n3", "5\n2\n3\n2\n4", "5\n1\n3\n1\n3", "4\n2\n2\n1\n3"]
+  answer: [0]
+  verify: output
+  exp: |
+    `count` は引数なしなら要素数、引数ありならその値と等しい要素の数、ブロックありならブロックが真になる要素の数を返します。
+
+    `index` は最初に見つかった位置、`rindex` は最後に見つかった位置です。
+
+- cat: 組み込みライブラリ
+  topic: group_by / partition
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    words = %w(apple avocado banana blueberry cherry)
+    p words.group_by { |w| w[0] }
+    p words.partition { |w| w.size > 6 }
+  choices:
+    - |-
+      {"a"=>["apple", "avocado"], "b"=>["banana", "blueberry"], "c"=>["cherry"]}
+      [["avocado", "blueberry"], ["apple", "banana", "cherry"]]
+    - |-
+      [["apple", "avocado"], ["banana", "blueberry"], ["cherry"]]
+      [["avocado", "blueberry"], ["apple", "banana", "cherry"]]
+    - |-
+      {"a"=>["apple", "avocado"], "b"=>["banana", "blueberry"], "c"=>["cherry"]}
+      {true=>["avocado", "blueberry"], false=>["apple", "banana", "cherry"]}
+    - |-
+      {"a"=>2, "b"=>2, "c"=>1}
+      [["avocado", "blueberry"], ["apple", "banana", "cherry"]]
+  answer: [0]
+  verify: output
+  exp: |
+    `group_by` はブロックの戻り値をキー、その値になった要素の配列を値とするハッシュを返します。
+
+    `partition` はブロックが真になる要素と偽になる要素に分け、`[真の配列, 偽の配列]` の2要素の配列を返します。
+
+- cat: 組み込みライブラリ
+  topic: インデックス付きの繰り返し
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = %w(a b c)
+    a.each_with_index { |x, i| print i, x }
+    puts
+    p a.map.with_index(1) { |x, i| "#{i}:#{x}" }
+  choices: ["0a1b2c\n[\"1:a\", \"2:b\", \"3:c\"]", "a0b1c2\n[\"1:a\", \"2:b\", \"3:c\"]", "0a1b2c\n[\"0:a\", \"1:b\", \"2:c\"]", "1a2b3c\n[\"1:a\", \"2:b\", \"3:c\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `each_with_index` はブロックに「要素, 位置」の順で渡します。位置は 0 から始まります。
+
+    `map.with_index(1)` のように `with_index` を使うと、インデックスの開始値を指定できます。`map` と組み合わせるとインデックス付きで変換できます。
+
+- cat: 組み込みライブラリ
+  topic: each_with_object / tally
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = %w(a b a).each_with_object(Hash.new(0)) { |w, h| h[w] += 1 }
+    p r
+    p %w(a b a).tally
+  choices: ["{\"a\"=>2, \"b\"=>1}\n{\"a\"=>2, \"b\"=>1}", "[\"a\", \"b\", \"a\"]\n{\"a\"=>2, \"b\"=>1}", "{\"a\"=>2, \"b\"=>1}\n[[\"a\", 2], [\"b\", 1]]", "{}\n{\"a\"=>2, \"b\"=>1}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `each_with_object(初期オブジェクト)` は、各要素とそのオブジェクトをブロックに渡し、最後にそのオブジェクトを返します。ブロックの引数は「要素, オブジェクト」の順です（`inject` とは逆）。
+
+    `tally` は要素ごとの出現回数をハッシュで返します。
+
+- cat: 組み込みライブラリ
+  topic: flatten / flat_map
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [[1, [2]], [3]]
+    p a.flatten(1)
+    p [1, 2].flat_map { |x| [x, x * 10] }
+    p [1, 2].map { |x| [x, x * 10] }
+  choices: ["[1, [2], 3]\n[1, 10, 2, 20]\n[[1, 10], [2, 20]]", "[1, 2, 3]\n[1, 10, 2, 20]\n[[1, 10], [2, 20]]", "[1, [2], 3]\n[[1, 10], [2, 20]]\n[[1, 10], [2, 20]]", "[1, [2], 3]\n[1, 10, 2, 20]\n[1, 10, 2, 20]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `flatten` に引数を渡すと、平らにする深さを指定できます。`flatten(1)` は1段だけ平らにするので `[2]` は残ります。
+
+    `flat_map` は `map` した結果を1段平らにします。`map` だけなら配列の配列になります。
+
+- cat: 組み込みライブラリ
+  topic: 最小値・最大値・合計
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [4, 9, 1, 7]
+    p a.minmax
+    p a.max(2)
+    p a.sum / a.size
+    p a.sum.fdiv(a.size)
+  choices: ["[1, 9]\n[9, 7]\n5\n5.25", "[1, 9]\n9\n5\n5.25", "[1, 9]\n[9, 7]\n5.25\n5.25", "[9, 1]\n[7, 9]\n5\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    `minmax` は `[最小値, 最大値]` を返します。`max(n)` / `min(n)` は大きい（小さい）順に n 個の配列を返します。
+
+    合計 21 を要素数 4 で割るとき、整数どうしの `/` は整数除算なので `5` です。小数で求めるには `fdiv` や `to_f` を使います。
+
+- cat: 組み込みライブラリ
+  topic: Array#* と join
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2, 3] * ","
+    p [1, 2] * 2
+    p [1, [2, [3]]].join("-")
+  choices: ["\"1,2,3\"\n[1, 2, 1, 2]\n\"1-2-3\"", "[1, 2, 3, \",\"]\n[2, 4]\n\"1-[2, [3]]\"", '!1行目で `TypeError` が発生する', "\"1,2,3\"\n[2, 4]\n\"1-2-3\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Array#*` は引数が文字列なら `join` と同じ動きをし、整数なら配列をくり返した新しい配列を返します。
+
+    `join` は入れ子の配列も平らにしてから連結します。
+
+- cat: 組み込みライブラリ
+  topic: Array（連結）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [1, 2]
+    b = a + [3]
+    a.concat([4])
+    p a, b
+    c = a
+    c += [5]
+    p a, c
+  choices: ["[1, 2, 4]\n[1, 2, 3]\n[1, 2, 4]\n[1, 2, 4, 5]", "[1, 2]\n[1, 2, 3]\n[1, 2]\n[1, 2, 5]", "[1, 2, 4]\n[1, 2, 3]\n[1, 2, 4, 5]\n[1, 2, 4, 5]", "[1, 2, 3, 4]\n[1, 2, 3]\n[1, 2, 3, 4]\n[1, 2, 3, 4, 5]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `+` は新しい配列を作り、`concat` はレシーバ自身に追加します（破壊的）。
+
+    `c = a` で同じ配列を指していても、`c += [5]` は `c = c + [5]` なので新しい配列が `c` に代入され、`a` は変わりません。
+
+- cat: 組み込みライブラリ
+  topic: values_at / dig
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [10, 20, 30, 40]
+    p a.values_at(0, 2, 5)
+    nested = { user: { tags: ["ruby", "rails"] } }
+    p nested.dig(:user, :tags, 1)
+    p nested.dig(:user, :name, 0)
+  choices: ["[10, 30, nil]\n\"rails\"\nnil", "[10, 30]\n\"rails\"\nnil", '!5行目の `dig` で `NoMethodError` が発生する', "[10, 20, 30]\n\"ruby\"\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `values_at` は指定した位置の要素をまとめて配列で返します。範囲外の位置は `nil` になります。
+
+    `dig` は入れ子になったハッシュや配列を順にたどります。途中で `nil` になった時点で `nil` を返すので、`NoMethodError` にはなりません。
+
+- cat: 組み込みライブラリ
+  topic: rotate / transpose
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2, 3].rotate
+    p [1, 2, 3].rotate(-1)
+    p [[1, 2], [3, 4], [5, 6]].transpose
+  choices: ["[2, 3, 1]\n[3, 1, 2]\n[[1, 3, 5], [2, 4, 6]]", "[3, 1, 2]\n[2, 3, 1]\n[[1, 3, 5], [2, 4, 6]]", "[2, 3, 1]\n[3, 1, 2]\n[[6, 5], [4, 3], [2, 1]]", "[3, 2, 1]\n[1, 2, 3]\n[[1, 3, 5], [2, 4, 6]]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `rotate` は要素を左に1つずらし、先頭の要素を末尾に回します。負の数を渡すと右にずらします。
+
+    `transpose` は配列の配列を行列とみなして、行と列を入れ替えます。
+
+- cat: 組み込みライブラリ
+  topic: all? / any? / none?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [].all?
+    p [].any?
+    p [nil, false].none?
+    p [1, nil].all?
+    p [1, 2].any?(&:even?)
+  choices: ["true\nfalse\ntrue\nfalse\ntrue", "false\nfalse\ntrue\nfalse\ntrue", "true\ntrue\nfalse\nfalse\ntrue", "nil\nnil\ntrue\nfalse\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロックなしの `all?` / `any?` / `none?` は、要素そのものの真偽を調べます。
+
+    空の配列では、`all?` は「偽の要素が1つもない」ので `true`、`any?` は「真の要素が1つもない」ので `false` です。`nil` と `false` はどちらも偽なので `none?` は `true` です。
+
+- cat: 組み込みライブラリ
+  topic: product / combination
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2].product(["a", "b"])
+    p [1, 2, 3].combination(2).to_a
+    p [1, 2, 3].each_slice(2).map(&:sum)
+  choices:
+    - |-
+      [[1, "a"], [1, "b"], [2, "a"], [2, "b"]]
+      [[1, 2], [1, 3], [2, 3]]
+      [3, 3]
+    - |-
+      [[1, "a"], [2, "b"]]
+      [[1, 2], [1, 3], [2, 3]]
+      [3, 3]
+    - |-
+      [[1, "a"], [1, "b"], [2, "a"], [2, "b"]]
+      [[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]]
+      [3, 3]
+    - |-
+      [[1, "a"], [1, "b"], [2, "a"], [2, "b"]]
+      [[1, 2], [1, 3], [2, 3]]
+      [3, 5]
+  answer: [0]
+  verify: output
+  exp: |
+    `product` はすべての組み合わせ（直積）を作ります。`combination(n)` は順番を区別しない n 個の組み合わせを返します（順番を区別するのは `permutation`）。
+
+    `each_slice(2)` は `[1, 2]` と `[3]` に分けるので、それぞれの合計は `3` と `3` です。
+
+- cat: 組み込みライブラリ
+  topic: 配列への変換
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Array(nil)
+    p Array([1, 2])
+    p Array(1..3)
+    p nil.to_a, nil.to_s, nil.to_i
+  choices: ["[]\n[1, 2]\n[1, 2, 3]\n[]\n\"\"\n0", "[nil]\n[1, 2]\n[1..3]\n[]\n\"\"\n0", "[]\n[[1, 2]]\n[1, 2, 3]\n[]\n\"nil\"\n0", "[]\n[1, 2]\n[1, 2, 3]\nnil\nnil\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Kernel#Array` は引数を配列に変換します。`nil` は空配列、配列はそのまま、範囲は要素の配列になり、それ以外は `[obj]` のように1要素の配列で包みます。
+
+    `nil` は `to_a` で `[]`、`to_s` で `""`、`to_i` で `0` に変換されます。
+
+- cat: 組み込みライブラリ
+  topic: reject と reject!
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [1, 2, 3, 4]
+    b = a.reject { |x| x.even? }
+    p a, b
+    p a.reject! { |x| x > 10 }
+    p a.delete_if { |x| x > 10 }
+  choices: ["[1, 2, 3, 4]\n[1, 3]\nnil\n[1, 2, 3, 4]", "[1, 3]\n[1, 3]\nnil\n[1, 3]", "[1, 2, 3, 4]\n[1, 3]\n[1, 2, 3, 4]\n[1, 2, 3, 4]", "[1, 2, 3, 4]\n[2, 4]\nnil\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `reject` はブロックが真の要素を除いた新しい配列を返し、レシーバは変えません。
+
+    `reject!` と `delete_if` はどちらもレシーバから削除する破壊的メソッドですが、何も削除しなかったときの戻り値が違います。`reject!` は `nil`、`delete_if` はレシーバ自身を返します。
+
+- cat: 組み込みライブラリ
+  topic: find / find_index
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [3, 8, 5, 12]
+    p a.find { |x| x > 4 }
+    p a.find_index { |x| x > 4 }
+    p a.find { |x| x > 100 }
+    p a.select.with_index { |x, i| i.odd? }
+  choices: ["8\n1\nnil\n[8, 12]", "[8, 5, 12]\n1\nnil\n[8, 12]", "8\n2\nnil\n[3, 5]", "8\n1\n[]\n[8, 12]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `find`（別名 `detect`）はブロックが真になる最初の要素を返し、見つからなければ `nil` です。条件に合う要素をすべて集めるのは `select` です。
+
+    `find_index` は最初に条件を満たした位置を返します。`select.with_index` で位置を使った絞り込みもできます。
+
+- cat: 組み込みライブラリ
+  topic: 配列の比較と並べ替え
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2] <=> [1, 3]
+    p [[2, "b"], [1, "z"], [2, "a"]].sort
+    p [3, 1, 2].sort.reverse == [3, 1, 2].sort { |a, b| b <=> a }
+  choices: ["-1\n[[1, \"z\"], [2, \"a\"], [2, \"b\"]]\ntrue", "1\n[[1, \"z\"], [2, \"a\"], [2, \"b\"]]\ntrue", "-1\n[[1, \"z\"], [2, \"b\"], [2, \"a\"]]\ntrue", '!2行目で `ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    配列どうしの `<=>` は、先頭の要素から順に比較します。2番目の要素で `2 < 3` なので `-1` です。
+
+    そのため配列の配列を `sort` すると、1番目の要素で並べ、同じなら2番目の要素で並べた結果になります。
+
+- cat: 組み込みライブラリ
+  topic: Hash#each
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { a: 1, b: 2 }
+    h.each { |pair| p pair }
+    h.each_with_index { |(k, v), i| puts "#{i}:#{k}=#{v}" }
+  choices: ["[:a, 1]\n[:b, 2]\n0:a=1\n1:b=2", ":a\n:b\n0:a=1\n1:b=2", "[:a, 1]\n[:b, 2]\n0:[:a, 1]=\n1:[:b, 2]=", "[:a, 1]\n[:b, 2]\n1:a=1\n2:b=2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Hash#each` のブロック引数が1つなら `[キー, 値]` の配列が渡され、2つならキーと値に分けて渡されます。
+
+    `each_with_index` では要素（`[キー, 値]`）と位置が渡されるので、`|(k, v), i|` のように括弧で配列を分解して受け取れます。
+
+- cat: 組み込みライブラリ
+  topic: ハッシュと配列の変換
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { x: 1, y: 2 }
+    p h.to_a
+    p [[:a, 1], [:b, 2]].to_h
+    p %w(k1 k2).zip([10, 20]).to_h
+  choices: ["[[:x, 1], [:y, 2]]\n{:a=>1, :b=>2}\n{\"k1\"=>10, \"k2\"=>20}", "[:x, 1, :y, 2]\n{:a=>1, :b=>2}\n{\"k1\"=>10, \"k2\"=>20}", "[[:x, 1], [:y, 2]]\n[[:a, 1], [:b, 2]]\n{\"k1\"=>10, \"k2\"=>20}", "[[:x, :y], [1, 2]]\n{:a=>1, :b=>2}\n{\"k1\"=>\"k2\", 10=>20}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Hash#to_a` は `[キー, 値]` の配列の配列を返します。逆に、`[キー, 値]` の組の配列は `to_h` でハッシュに変換できます。
+
+    `zip` で2つの配列を組にしてから `to_h` すると、キーの配列と値の配列からハッシュを作れます。
+
+- cat: 組み込みライブラリ
+  topic: Hash（キー・値の検索）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { "a" => 1, "b" => 2 }
+    p h.key?("a"), h.value?(3)
+    p h.key(2)
+    p h.invert
+  choices: ["true\nfalse\n\"b\"\n{1=>\"a\", 2=>\"b\"}", "true\nfalse\n2\n{1=>\"a\", 2=>\"b\"}", "true\nfalse\n\"b\"\n{\"b\"=>2, \"a\"=>1}", "\"a\"\nnil\n\"b\"\n{1=>\"a\", 2=>\"b\"}"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `key?`（別名 `has_key?`、`include?`、`member?`）… キーがあるか
+    - `value?`（別名 `has_value?`）… 値があるか
+    - `key(値)` … その値を持つキーを返す
+    - `invert` … キーと値を入れ替えたハッシュを返す
+
+- cat: 組み込みライブラリ
+  topic: Hash#delete
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { a: 1, b: 2 }
+    p h.delete(:a)
+    p h.delete(:z)
+    p h.delete(:z) { |k| "#{k} not found" }
+    p h
+  choices: ["1\nnil\n\"z not found\"\n{:b=>2}", "{:b=>2}\n{:b=>2}\n\"z not found\"\n{:b=>2}", '!3行目で `KeyError` が発生する', "[:a, 1]\nnil\n\"z not found\"\n{:b=>2}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Hash#delete` は指定したキーの組を削除し、削除した値を返します。キーがなければ `nil` を返し、エラーにはなりません。
+
+    ブロックを渡すと、キーがなかったときにブロックが実行され、その戻り値が返されます。
+
+- cat: 組み込みライブラリ
+  topic: Hashの並べ替え
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { b: 2, c: 1, a: 3 }
+    p h.sort
+    p h.sort_by { |k, v| v }.to_h
+    p h.min_by { |k, v| v }
+  choices: ["[[:a, 3], [:b, 2], [:c, 1]]\n{:c=>1, :b=>2, :a=>3}\n[:c, 1]", "{:a=>3, :b=>2, :c=>1}\n{:c=>1, :b=>2, :a=>3}\n[:c, 1]", "[[:c, 1], [:b, 2], [:a, 3]]\n{:c=>1, :b=>2, :a=>3}\n[:c, 1]", "[[:a, 3], [:b, 2], [:c, 1]]\n[[:c, 1], [:b, 2], [:a, 3]]\n{:c=>1}"]
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュに `sort` を使うと `[キー, 値]` の配列どうしを比べるので、キーの順に並んだ配列の配列が返ります。結果はハッシュではありません。
+
+    ハッシュに戻したいときは `to_h` を続けます。`min_by` は最小の `[キー, 値]` を返します。
+
+- cat: 組み込みライブラリ
+  topic: transform_values / filter_map
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    prices = { apple: 100, melon: 500 }
+    p prices.transform_values { |v| v * 2 }
+    p prices.filter_map { |k, v| k if v > 200 }
+    p prices.sum { |k, v| v }
+  choices: ["{:apple=>200, :melon=>1000}\n[:melon]\n600", "[200, 1000]\n[:melon]\n600", "{:apple=>200, :melon=>1000}\n[nil, :melon]\n600", "{:apple=>200, :melon=>1000}\n{:melon=>500}\n600"]
+  answer: [0]
+  verify: output
+  exp: |
+    `transform_values` はキーはそのままで、値をブロックの戻り値に変えた新しいハッシュを返します（キーを変えるのは `transform_keys`）。
+
+    `filter_map` は `map` したうえで偽（`nil` / `false`）の結果を取り除いた配列を返します。
+
+- cat: 組み込みライブラリ
+  topic: Hashの比較
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = { x: 1, y: 2 }
+    b = { y: 2, x: 1 }
+    p a == b
+    p a.to_a == b.to_a
+    p a.keys
+  choices: ["true\nfalse\n[:x, :y]", "false\nfalse\n[:x, :y]", "true\ntrue\n[:x, :y]", "true\nfalse\n[:y, :x]"]
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュの `==` は、同じキーと値の組をすべて持っていれば `true` です。挿入の順番は比較に関係しません。
+
+    ただし `to_a` などで配列にすると順番が残るので、配列どうしの比較では `false` になります。
+
+- cat: 組み込みライブラリ
+  topic: merge! / update
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { a: 1 }
+    r = h.merge!(b: 2)
+    p h
+    p r.equal?(h)
+    h.update(a: 9)
+    p h
+  choices: ["{:a=>1, :b=>2}\ntrue\n{:a=>9, :b=>2}", "{:a=>1}\nfalse\n{:a=>9}", "{:a=>1, :b=>2}\nfalse\n{:a=>9, :b=>2}", "{:a=>1, :b=>2}\ntrue\n{:a=>1, :b=>2}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `merge!`（別名 `update`）はレシーバ自身に引数のハッシュを取り込み、レシーバ自身を返します。キーが重複すると引数の値で上書きします。
+
+- cat: 組み込みライブラリ
+  topic: Hash.newのブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = Hash.new { |hash, key| hash[key] = key.to_s * 2 }
+    p h[:ab]
+    p h
+    p h.fetch(:x, "none")
+  choices: ["\"abab\"\n{:ab=>\"abab\"}\n\"none\"", "\"abab\"\n{}\n\"none\"", "\"abab\"\n{:ab=>\"abab\"}\n\"xx\"", "nil\n{}\n\"none\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Hash.new` にブロックを渡すと、存在しないキーを `[]` で参照したときにブロックが呼ばれます。ブロック内で `hash[key] = ...` と代入すれば、その値がハッシュに登録されます。
+
+    `fetch` はデフォルト値やブロックを使わないので、第2引数の `"none"` が返ります。
+
+- cat: 組み込みライブラリ
+  topic: Hashのキーの同一性
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = { 1 => "int" }
+    p h[1.0]
+    h[1.0] = "float"
+    p h.size
+    p h[1]
+  choices: ["nil\n2\n\"int\"", "\"int\"\n1\n\"float\"", "nil\n1\n\"float\"", "\"int\"\n2\n\"int\""]
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュのキーは `eql?` と `hash` で比較されます。`1 == 1.0` は `true` ですが、`1.eql?(1.0)` は `false` なので別のキーとして扱われます。
+
+    そのため `h[1.0]` は `nil` で、`1.0` を代入するとキーが2つになります。
+
+- cat: 組み込みライブラリ
+  topic: Range#include? と cover?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = 1..10
+    p r.include?(5.5)
+    p r.to_a.include?(5.5)
+    p ("a".."z").cover?("bb")
+    p ("a".."z").include?("bb")
+  choices: ["true\nfalse\ntrue\nfalse", "false\nfalse\nfalse\nfalse", "true\ntrue\ntrue\ntrue", "true\nfalse\nfalse\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    数値の範囲の `include?` は `始点 <= x <= 終点` を判定するので、`5.5` も含まれます。配列にすると要素は 1〜10 の整数だけなので `false` です。
+
+    `cover?` は大小比較で判定するため `"bb"` は `"a"` と `"z"` の間とみなされ `true` です。文字列の範囲の `include?` は実際の要素（`"a"`〜`"z"` の1文字）に含まれるかを調べるので `false` です。
+
+- cat: 組み込みライブラリ
+  topic: Range（終端なし・step）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = (1..).first(3)
+    b = ("a".."e").step(2).to_a
+    c = (1...10).size
+    d = (1..10).sum
+    p a, b, c, d
+  choices: ["[1, 2, 3]\n[\"a\", \"c\", \"e\"]\n9\n55", "!1行目で `RangeError` が発生する", "[1, 2, 3]\n[\"a\", \"c\", \"e\"]\n10\n55", "[1, 2, 3]\n[\"b\", \"d\"]\n9\n45"]
+  answer: [0]
+  verify: output
+  exp: |
+    `(1..)` は終端のない範囲です。`first(3)` のように必要な数だけ取り出せます（`to_a` は無限に続くので使えません）。
+
+    `step(2)` は先頭から1つおきに取り出します。`(1...10)` は終端を含まないので要素数は 9、`(1..10).sum` は 55 です。
+
+- cat: 組み込みライブラリ
+  topic: upto / downto / step
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    3.downto(1) { |i| print i }
+    puts
+    1.upto(3).each { |i| print i * i }
+    puts
+    1.0.step(2.0, 0.5) { |f| print f, " " }
+  choices: ["321\n149\n1.0 1.5 2.0", "321\n123\n1.0 1.5 2.0", "123\n149\n1.0 1.5", "321\n149\n1 1.5 2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `downto` は1ずつ減らしながら、`upto` は1ずつ増やしながらブロックを実行します。ブロックを渡さなければ Enumerator が返ります。
+
+    `step` は Float でも使え、`1.0` から `2.0` まで `0.5` ずつ進みます。
+
+- cat: 組み込みライブラリ
+  topic: Integerの便利メソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p(-5.abs)
+    p 0.zero?, 3.even?
+    p 15.clamp(1, 10)
+    p 7.between?(1, 7)
+  choices: ["5\ntrue\nfalse\n10\ntrue", "-5\ntrue\nfalse\n10\ntrue", "5\ntrue\nfalse\n15\nfalse", "5\nfalse\nfalse\n10\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `abs` は絶対値、`zero?` は 0 かどうか、`even?` / `odd?` は偶数・奇数かを返します。
+
+    `clamp(min, max)` は範囲外の値を min または max に丸めます。`between?(min, max)` は両端を含むので、`7.between?(1, 7)` は `true` です。
+
+- cat: 組み込みライブラリ
+  topic: Float（桁を指定した丸め）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 3.14159.round(2)
+    p 3.14159.floor(1)
+    p 3.99.truncate
+    p 1250.round(-2)
+  choices: ["3.14\n3.1\n3\n1300", "3.14\n3.2\n4\n1200", "3.14\n3.1\n3.99\n1300", "3.15\n3.1\n3\n1250"]
+  answer: [0]
+  verify: output
+  exp: |
+    `round`、`floor`、`ceil` は引数で桁を指定できます。正の数なら小数点以下の桁数、負の数なら整数部分の位（`-2` は百の位）で丸めます。
+
+    `truncate` は小数部分を切り捨てて整数にします。`1250.round(-2)` はちょうど半分なので 0 から遠い方へ丸めて `1300` です。
+
+- cat: 組み込みライブラリ
+  topic: Integer（digits / gcd / lcm）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1234.digits
+    p 12.gcd(18), 12.lcm(18)
+    p 2.pow(10, 1000)
+  choices: ["[4, 3, 2, 1]\n6\n36\n24", "[1, 2, 3, 4]\n6\n36\n1024", "[4, 3, 2, 1]\n36\n6\n24", "[1, 2, 3, 4]\n6\n216\n24"]
+  answer: [0]
+  verify: output
+  exp: |
+    `digits` は各桁の数字を、**下の桁から順に**並べた配列で返します。
+
+    `gcd` は最大公約数、`lcm` は最小公倍数です。`pow(b, m)` は「`b` 乗して `m` で割った余り」を返すので、1024 % 1000 = 24 です。
+
+- cat: 組み込みライブラリ
+  topic: 型変換（Integer / Float）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "3.7".to_i
+    p "3.7".to_f.round
+    p Float("1e2")
+    p Integer(nil)
+  choices:
+    - '`3`、`4`、`100.0` と出力された後、`TypeError` が発生する'
+    - '`3`、`4`、`100.0`、`0` と出力される'
+    - '`4`、`4`、`100.0` と出力された後、`TypeError` が発生する'
+    - '`3`、`4` と出力された後、`ArgumentError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "3\n4\n100.0", error: TypeError}
+  exp: |
+    `"3.7".to_i` は読める部分までを整数にするので `3` です。Float にしてから `round` すれば四捨五入されて `4` になります。
+
+    `Float()` は指数表記も解釈します。`Integer(nil)` は `nil` を整数に変換できないため `TypeError` です（`nil.to_i` なら `0`）。
+
+- cat: 組み込みライブラリ
+  topic: send / respond_to?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "ruby"
+    p s.send(:upcase)
+    p s.respond_to?(:upcase), s.respond_to?(:fly)
+    p 5.public_send(:+, 3)
+  choices: ["\"RUBY\"\ntrue\nfalse\n8", "\"ruby\"\ntrue\nfalse\n8", '!3行目で `NoMethodError` が発生する', "\"RUBY\"\n\"upcase\"\nnil\n8"]
+  answer: [0]
+  verify: output
+  exp: |
+    `send` / `public_send` は、メソッド名をシンボル（や文字列）で指定して呼び出します。2つ目以降の引数がメソッドの引数になります。
+
+    `respond_to?` は、そのオブジェクトがメソッドを呼び出せるかどうかを返します。
+
+- cat: 組み込みライブラリ
+  topic: 凍結されているオブジェクト
+  q: 次のコードを実行するとどうなりますか（マジックコメントはないものとします）。
+  code: |
+    p 1.frozen?
+    p :sym.frozen?
+    p nil.frozen?
+    p "str".frozen?
+  choices: ["true\ntrue\ntrue\nfalse", "false\nfalse\nfalse\nfalse", "true\ntrue\nfalse\nfalse", "true\ntrue\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    整数・シンボル・`nil`・`true` / `false` は、最初から凍結（変更不可）されています。
+
+    文字列リテラルは、`# frozen_string_literal: true` のマジックコメントがなければ凍結されていません。
+
+- cat: 組み込みライブラリ
+  topic: then / tap
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = 5.then { |x| x * 2 }
+    a = [1].tap { |arr| arr << 2 }
+    b = [1].tap { |arr| arr + [2] }
+    p r, a, b
+  choices: ["10\n[1, 2]\n[1]", "5\n[1, 2]\n[1, 2]", "10\n[1, 2]\n[1, 2]", "10\n[1]\n[1]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `then`（別名 `yield_self`）はブロックの戻り値を返します。
+
+    `tap` はブロックを実行したうえで、ブロックの戻り値に関係なくレシーバ自身を返します。`<<` はレシーバを変更するので `[1, 2]` になりますが、`+` は新しい配列を作るだけなので `b` は `[1]` のままです。
+
+- cat: 組み込みライブラリ
+  topic: Enumerableの別名
+  q: 同じ動作をする（別名の関係にある）メソッドの組み合わせとして正しいものを2つ選択してください。
+  choices:
+    - '`map` と `collect`'
+    - '`find` と `select`'
+    - '`inject` と `reduce`'
+    - '`each` と `each_with_index`'
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - "exit(Enumerable.instance_method(:map) == Enumerable.instance_method(:collect))"
+    - "exit(Enumerable.instance_method(:find) == Enumerable.instance_method(:select))"
+    - "exit(Enumerable.instance_method(:inject) == Enumerable.instance_method(:reduce))"
+    - "exit(Array.instance_method(:each) == Array.instance_method(:each_with_index))"
+  exp: |
+    よく出る別名の組み合わせです。
+
+    - `map` = `collect`
+    - `select` = `filter` = `find_all`
+    - `find` = `detect`
+    - `inject` = `reduce`
+    - `include?` = `member?`
+
+    `find` は条件を満たす最初の要素を1つ返し、`select` は条件を満たす要素をすべて配列で返すので別物です。
+
+- cat: 組み込みライブラリ
+  topic: Enumerator#next と loop
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    e = [10, 20].each
+    p e.next
+    p e.next
+    r = loop do
+      e.next
+    end
+    p r
+  choices: ["10\n20\n[10, 20]", "10\n20\nnil", "10\n10\n[10, 20]", '!5行目で `StopIteration` が発生し、プログラムが終了する']
+  answer: [0]
+  verify: output
+  exp: |
+    Enumerator の `next` は要素を1つずつ返し、要素がなくなると `StopIteration` 例外を発生させます。
+
+    `loop` は `StopIteration` を捕捉して終了し、そのときの戻り値は元の `each` の戻り値（配列 `[10, 20]`）になります。そのためエラーにはなりません。
+
+- cat: 組み込みライブラリ
+  topic: Fileのパス操作
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    path = "/home/user/app/main.rb"
+    p File.basename(path)
+    p File.basename(path, ".rb")
+    p File.extname(path)
+    p File.dirname(path)
+    p File.join("lib", "app.rb")
+  choices: ["\"main.rb\"\n\"main\"\n\".rb\"\n\"/home/user/app\"\n\"lib/app.rb\"", "\"main.rb\"\n\"main\"\n\"rb\"\n\"/home/user/app/\"\n\"lib/app.rb\"", "\"main\"\n\"main\"\n\".rb\"\n\"app\"\n\"libapp.rb\"", "\"main.rb\"\n\"main.rb\"\n\".rb\"\n\"/home/user/app\"\n\"lib/app.rb\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `File.basename` … ファイル名部分（第2引数に拡張子を渡すとそれを除く）
+    - `File.extname` … 拡張子（`.` を含む）
+    - `File.dirname` … ディレクトリ部分（末尾の `/` は付かない）
+    - `File.join` … `/` でつないでパスを作る
+
+- cat: 組み込みライブラリ
+  topic: File.write / readlines
+  q: 次のコードを実行するとどうなりますか（カレントディレクトリは書き込み可能とします）。
+  code: |
+    p File.write("data.txt", "a\nb\n")
+    p File.exist?("data.txt")
+    p File.readlines("data.txt")
+    p File.readlines("data.txt", chomp: true)
+  choices:
+    - |-
+      4
+      true
+      ["a\n", "b\n"]
+      ["a", "b"]
+    - |-
+      true
+      true
+      ["a\n", "b\n"]
+      ["a", "b"]
+    - |-
+      4
+      true
+      ["a", "b"]
+      ["a", "b"]
+    - |-
+      nil
+      true
+      "a\nb\n"
+      ["a", "b"]
+  answer: [0]
+  verify: output
+  exp: |
+    `File.write` はファイルに書き込み、書き込んだバイト数を返します。`File.exist?` はファイルが存在するかを返します。
+
+    `File.readlines` は行ごとの配列を返し、各行には改行が残ります。`chomp: true` を指定すると改行を除いた配列になります。
+
+- cat: 組み込みライブラリ
+  topic: ファイルのオープンと例外
+  q: 次のコードを実行するとどうなりますか（no_such_file.txt は存在しないものとします）。
+  code: |
+    begin
+      File.open("no_such_file.txt") { |f| f.read }
+    rescue SystemCallError => e
+      p e.class
+    end
+    File.open("new.txt", "w") { |f| f.write("ok") }
+    p File.read("new.txt")
+  choices: ["Errno::ENOENT\n\"ok\"", "IOError\n\"ok\"", "nil\n\"ok\"", '!2行目で例外が発生し、プログラムが終了する']
+  answer: [0]
+  verify: output
+  exp: |
+    モードを省略した `File.open` は読み込み（`"r"`）で開くため、ファイルがないと `Errno::ENOENT` が発生します。これは `SystemCallError` のサブクラスです。
+
+    `"w"` モードならファイルがなくても新しく作成されます。
+
+- cat: 組み込みライブラリ
+  topic: Timeの計算
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    t = Time.new(2024, 2, 28, 12, 0, 0)
+    u = t + 60 * 60 * 24
+    d = u - t
+    p u.month, u.day
+    p d.class, d
+    p u.wday
+  choices: ["2\n29\nFloat\n86400.0\n4", "3\n1\nFloat\n86400.0\n5", "2\n29\nInteger\n86400\n4", "2\n29\nFloat\n1.0\n4"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Time` に数値を足すと、その秒数だけ進んだ時刻になります。2024年はうるう年なので、2月28日の1日後は2月29日です。
+
+    `Time` どうしの引き算は秒数を Float で返します。`wday` は曜日を数値で返し、日曜日が 0 です（2024年2月29日は木曜日なので 4）。

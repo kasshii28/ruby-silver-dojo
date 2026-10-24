@@ -1,0 +1,414 @@
+# オブジェクト指向（追加分）
+- cat: オブジェクト指向
+  topic: initializeの可視性
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class A
+      def initialize
+        @v = 1
+      end
+    end
+    a = A.new
+    p A.private_instance_methods(false)
+    a.initialize
+  choices:
+    - '`[:initialize]` と出力された後、`NoMethodError` が発生する'
+    - '`[]` と出力された後、`NoMethodError` が発生する'
+    - '`[:initialize]` と出力され、エラーは発生しない'
+    - '6行目で `ArgumentError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "[:initialize]", error: NoMethodError}
+  exp: |
+    `initialize` は自動的に private メソッドになります。`new` の内部から呼ばれるためのメソッドで、外から `a.initialize` のように直接呼び出すことはできません。
+
+- cat: オブジェクト指向
+  topic: self
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Foo
+      p self
+      def self.who
+        self
+      end
+      def who
+        self.class
+      end
+    end
+    p Foo.who, Foo.new.who
+  choices: ["Foo\nFoo\nFoo", "main\nFoo\nFoo", "Foo\nClass\nFoo", "Foo\nFoo\nClass"]
+  answer: [0]
+  verify: output
+  exp: |
+    クラス定義の本体を実行している間、`self` はそのクラス自身です。クラスメソッドの中の `self` もクラス自身です。
+
+    インスタンスメソッドの中の `self` はインスタンスなので、`self.class` は `Foo` になります。
+
+- cat: オブジェクト指向
+  topic: alias
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Greeter
+      def hello
+        "hello"
+      end
+      alias hi hello
+      alias_method :hey, :hello
+      def hello
+        "HELLO"
+      end
+    end
+    g = Greeter.new
+    p g.hi, g.hey, g.hello
+  choices: ["\"hello\"\n\"hello\"\n\"HELLO\"", "\"HELLO\"\n\"HELLO\"\n\"HELLO\"", "\"hello\"\n\"HELLO\"\n\"HELLO\"", '!5行目で `SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `alias 新しい名前 元の名前` と `alias_method :新しい名前, :元の名前` は、メソッドに別名を付けます。`alias` はキーワードなので引数をカンマで区切らず、`alias_method` はメソッドなのでカンマで区切ります。
+
+    別名はその時点のメソッド定義を指すので、後から `hello` を再定義しても `hi` / `hey` は元の内容のままです。
+
+- cat: オブジェクト指向
+  topic: 複数モジュールとsuper
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module A
+      def name
+        "A" + super
+      end
+    end
+    module B
+      def name
+        "B" + super
+      end
+    end
+    class Base
+      def name
+        "Base"
+      end
+    end
+    class Item < Base
+      include A
+      include B
+      def name
+        "Item" + super
+      end
+    end
+    puts Item.new.name
+  choices: ['ItemBABase', 'ItemABBase', 'ItemBase', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    後から `include` したモジュールほどクラスの近く（前）に挿入されるので、`ancestors` は `[Item, B, A, Base, ...]` になります。
+
+    `super` はこの順に次のメソッドを呼ぶので、`Item` → `B` → `A` → `Base` とつながり `"ItemBABase"` です。
+
+- cat: オブジェクト指向
+  topic: extend
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Hello
+      def hello
+        "hello from #{self.class}"
+      end
+    end
+    s = "str"
+    s.extend(Hello)
+    p s.hello
+    p "other".respond_to?(:hello)
+  choices: ["\"hello from String\"\nfalse", "\"hello from Hello\"\nfalse", "\"hello from String\"\ntrue", '!8行目で `NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `obj.extend(モジュール)` は、モジュールのメソッドをそのオブジェクトだけの特異メソッドとして追加します。ほかの文字列には影響しません。
+
+    クラス定義の中で `extend` すると、モジュールのメソッドがクラスメソッドとして追加されます。
+
+- cat: オブジェクト指向
+  topic: 特異メソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    dog = Object.new
+    def dog.bark
+      "Wan"
+    end
+    p dog.bark
+    p dog.singleton_methods
+    p Object.new.respond_to?(:bark)
+  choices: ["\"Wan\"\n[:bark]\nfalse", "\"Wan\"\n[]\ntrue", "\"Wan\"\n[:bark]\ntrue", '!2行目で `SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `def オブジェクト.メソッド名` で、特定のオブジェクトだけに属する特異メソッドを定義できます。同じクラスのほかのオブジェクトには定義されません。
+
+    クラスメソッド（`def self.xxx`）も、クラスというオブジェクトの特異メソッドです。
+
+- cat: オブジェクト指向
+  topic: privateとself
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Account
+      def show
+        "残高: #{self.balance}"
+      end
+      def compare(other)
+        other.balance
+      end
+      private
+      def balance
+        100
+      end
+    end
+    a = Account.new
+    puts a.show
+    a.compare(Account.new)
+  choices:
+    - '`残高: 100` と出力された後、`NoMethodError` が発生する'
+    - '`残高: 100` と出力され、エラーは発生しない'
+    - '`a.show` の時点で `NoMethodError` が発生する'
+    - '何も出力されず `NameError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "残高: 100", error: NoMethodError}
+  exp: |
+    private メソッドはレシーバを付けずに呼び出すのが原則ですが、Ruby 2.7 以降は `self.balance` のように `self` をレシーバにした呼び出しは許されています。
+
+    `other.balance` のように self 以外をレシーバにすると、同じクラスのインスタンスでも `NoMethodError` です（これを許したいなら `protected` にします）。
+
+- cat: オブジェクト指向
+  topic: privateメソッドと継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      private
+      def secret
+        "secret"
+      end
+    end
+    class Child < Parent
+      def reveal
+        secret
+      end
+    end
+    p Child.new.reveal
+  choices: ['"secret"', '!`NoMethodError` が発生する', 'nil', '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby の private は「レシーバを指定して呼べない」という制限です。サブクラスのメソッドからでも、レシーバなしで呼べば親クラスの private メソッドを使えます。
+
+    Java などの private（サブクラスからも見えない）とは意味が違う点に注意しましょう。
+
+- cat: オブジェクト指向
+  topic: ==の再定義
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Point
+      attr_reader :x, :y
+      def initialize(x, y)
+        @x, @y = x, y
+      end
+      def ==(other)
+        other.is_a?(Point) && x == other.x && y == other.y
+      end
+    end
+    a = Point.new(1, 2)
+    b = Point.new(1, 2)
+    p a == b
+    p a.equal?(b)
+    p a != b
+    p [a].include?(b)
+  choices: ["true\nfalse\nfalse\ntrue", "true\ntrue\nfalse\ntrue", "true\nfalse\ntrue\nfalse", "false\nfalse\ntrue\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `==` を定義すると、値が同じなら等しいとみなせます。`!=` は `==` の結果を反転したものになり、`include?` も `==` で比較するので `true` です。
+
+    `equal?` は同一オブジェクトかを判定するので、別々に `new` した `a` と `b` は `false` です。
+
+- cat: オブジェクト指向
+  topic: attr系メソッドが定義するもの
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class User
+      attr_accessor :name
+      attr_reader :age
+    end
+    p User.instance_methods(false).sort
+  choices: ['[:age, :name, :name=]', '[:age, :name]', '[:age, :age=, :name, :name=]', '[:@age, :@name]']
+  answer: [0]
+  verify: output
+  exp: |
+    `attr_accessor :name` は `name` と `name=` の2つのメソッドを、`attr_reader :age` は `age` だけを定義します。`attr_writer` なら `age=` だけです。
+
+    `instance_methods(false)` は、継承したものを除いてそのクラスで定義された public なインスタンスメソッドの一覧を返します。
+
+- cat: オブジェクト指向
+  topic: クラス階層の頂点
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Class.superclass
+    p Module.superclass
+    p Object.superclass
+    p BasicObject.superclass
+  choices: ["Module\nObject\nBasicObject\nnil", "Object\nObject\nBasicObject\nnil", "Module\nObject\nKernel\nBasicObject", "Module\nObject\nBasicObject\nBasicObject"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Class` の親は `Module`、`Module` の親は `Object`、`Object` の親は `BasicObject` で、`BasicObject` には親クラスがない（`nil`）ので、ここが継承の頂点です。
+
+    `Kernel` はモジュールで、`Object` にインクルードされています（親クラスではありません）。
+
+- cat: オブジェクト指向
+  topic: スーパークラスの不一致
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Animal; end
+    class Dog < Animal; end
+    class Dog < Object; end
+  choices:
+    - '`TypeError`（superclass mismatch）が発生する'
+    - 'エラーにならず、`Dog` の親クラスが `Object` に変わる'
+    - 'エラーにならず、`Dog` の親クラスは `Animal` のまま'
+    - '`SyntaxError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {error: TypeError}
+  exp: |
+    既存のクラスを再オープンするときに、最初の定義と違う親クラスを指定すると `TypeError`（superclass mismatch for class Dog）になります。
+
+    親クラスを省略して `class Dog` と書けば、問題なく再オープンできます。
+
+- cat: オブジェクト指向
+  topic: ===とクラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Integer === 3
+    p 3 === Integer
+    p Comparable === "a"
+    p((1..3) === 2)
+  choices: ["true\nfalse\ntrue\ntrue", "true\ntrue\ntrue\ntrue", "true\nfalse\nfalse\ntrue", "false\nfalse\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `クラス === obj`（`Module#===`）は `obj.is_a?(クラス)` と同じで、モジュールにも使えます。`String` は `Comparable` をインクルードしているので `true` です。
+
+    `3 === Integer` は `Integer#===`（値の比較）なので `false` です。`===` は左右を入れ替えると意味が変わります。`case` 文の `when` はこの `===` を使っています。
+
+- cat: オブジェクト指向
+  topic: includeの順番
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module M1; end
+    module M2; end
+    class A
+      include M1, M2
+    end
+    class B
+      include M1
+      include M2
+    end
+    p A.ancestors.take(3)
+    p B.ancestors.take(3)
+  choices: ["[A, M1, M2]\n[B, M2, M1]", "[A, M2, M1]\n[B, M2, M1]", "[A, M1, M2]\n[B, M1, M2]", "[A, M2, M1]\n[B, M1, M2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `include M1, M2` のように一度に複数指定すると、書いた順（`M1` が先）で探索されます。
+
+    `include` を別々に書いた場合は、後から `include` したモジュールがクラスの近くに挿入されるので、`M2` が先になります。
+
+- cat: オブジェクト指向
+  topic: オブジェクトのfreeze
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Config
+      attr_accessor :env
+    end
+    c = Config.new
+    c.env = "dev"
+    c.freeze
+    p c.env
+    c.env = "prod"
+  choices:
+    - '`"dev"` と出力された後、`FrozenError` が発生する'
+    - '`"dev"` と出力され、エラーは発生しない'
+    - '6行目で `FrozenError` が発生する'
+    - '`"prod"` と出力される'
+  answer: [0]
+  verify: run
+  expect: {out: '"dev"', error: FrozenError}
+  exp: |
+    オブジェクトを `freeze` すると、インスタンス変数を変更できなくなります。読み出し（`c.env`）はできますが、セッターで代入しようとすると `FrozenError` です。
+
+- cat: オブジェクト指向
+  topic: クラスメソッドの継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Shape
+      def self.create
+        new
+      end
+      def name
+        self.class.name.downcase
+      end
+    end
+    class Circle < Shape; end
+    p Circle.create.class
+    p Circle.create.name
+  choices: ["Circle\n\"circle\"", "Shape\n\"shape\"", "Circle\n\"shape\"", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    クラスメソッドもサブクラスに継承されます。`Circle.create` の中の `self` は `Circle` なので、`new` は `Circle` のインスタンスを作ります。
+
+    インスタンスメソッドの `self.class` も `Circle` になるので、名前は `"circle"` です。
+
+- cat: オブジェクト指向
+  topic: クラス変数の継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      @@shared = "class var"
+      @own = "class ivar"
+      def self.shared
+        @@shared
+      end
+      def self.own
+        @own
+      end
+    end
+    class Child < Parent; end
+    p Child.shared
+    p Child.own
+  choices: ["\"class var\"\nnil", "\"class var\"\n\"class ivar\"", "nil\nnil", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    クラス変数（`@@`）は親クラスとサブクラスで共有されるので、`Child` からも同じ値が見えます。
+
+    クラスインスタンス変数（クラス定義の直下の `@own`）は `Parent` というオブジェクト自身の変数です。`Child.own` の中の `self` は `Child` なので、`Child` の `@own`（未定義で `nil`）を参照します。
+
+- cat: オブジェクト指向
+  topic: 定数と継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Base
+      LIMIT = 10
+      def limit
+        LIMIT
+      end
+    end
+    class Sub < Base
+      LIMIT = 99
+    end
+    p Sub::LIMIT
+    p Sub.new.limit
+    p Base::LIMIT
+  choices: ["99\n10\n10", "99\n99\n10", "99\n99\n99", "10\n10\n10"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Sub::LIMIT` は `Sub` で定義した 99 です。サブクラスで同名の定数を定義しても、親クラスの定数は変わりません。
+
+    `limit` メソッドは `Base` の中に書かれているので、その中の `LIMIT` はレキシカルスコープ（書かれた場所）から探され、`Base::LIMIT`（10）になります。`self` が `Sub` のインスタンスでも変わりません。

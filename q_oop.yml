@@ -1,0 +1,324 @@
+# オブジェクト指向
+- cat: オブジェクト指向
+  topic: セッターとローカル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Counter
+      attr_accessor :count
+      def initialize
+        @count = 0
+      end
+      def increment
+        count = count + 1
+      end
+    end
+    c = Counter.new
+    c.increment
+    p c.count
+  choices: ['`1` と出力される', '`0` と出力される', '`NoMethodError` が発生する', '`nil` と出力される']
+  answer: [2]
+  verify: run
+  expect: {error: NoMethodError}
+  exp: |
+    メソッド内の `count = ...` はセッター `count=` の呼び出しではなく、ローカル変数 `count` への代入とみなされます。
+
+    右辺の `count` もこの時点で値が `nil` のローカル変数を指すため、`nil + 1` となり `NoMethodError` です。
+
+    セッターを呼ぶには `self.count = count + 1`（または `@count += 1`）と書きます。
+
+- cat: オブジェクト指向
+  topic: 継承とsuper
+  q: '__(1)__ に記述すると〔実行結果〕が出力されるコードを2つ選択してください。'
+  code: |
+    class Animal
+      def initialize(name)
+        @name = name
+      end
+      def speak
+        "#{@name}です"
+      end
+    end
+
+    class Dog < Animal
+      def initialize(name, breed)
+        __(1)__
+        @breed = breed
+      end
+      def speak
+        super + "（#{@breed}）"
+      end
+    end
+
+    puts Dog.new("ポチ", "柴犬").speak
+  result: ポチです（柴犬）
+  choices: ['super(name)', 'super', 'super()', '@name = name']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    括弧も引数もない `super` は、現在のメソッドが受け取った引数をそのまま親クラスのメソッドに渡します。ここでは2つの引数を渡すことになり `ArgumentError` です。`super()` は引数0個を渡すので、これも `ArgumentError` になります。
+
+    `super(name)` なら必要な引数だけを渡せます。また、親と同じインスタンス変数 `@name` に直接代入しても同じ結果になります。
+
+    `speak` の中の `super` は、親クラスの `speak` を呼び出してその戻り値を返します。
+
+- cat: オブジェクト指向
+  topic: アクセス制御
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Account
+      def initialize(balance)
+        @balance = balance
+      end
+      def richer_than?(other)
+        balance > other.balance
+      end
+
+      protected
+
+      def balance
+        @balance
+      end
+    end
+    a = Account.new(100)
+    b = Account.new(50)
+    p a.richer_than?(b)
+    p a.balance
+  choices:
+    - '`true` と出力された後、`NoMethodError` が発生する'
+    - '`true` と `100` が出力される'
+    - '1回目の `p` の時点で `NoMethodError` が発生する'
+    - '`false` と出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "true", error: NoMethodError}
+  exp: |
+    `protected` のメソッドは、同じクラス（またはサブクラス）のインスタンスメソッドの中であれば、他のオブジェクトをレシーバにして呼び出せます（`other.balance`）。クラスの外からは呼び出せないので、`a.balance` は `NoMethodError` です。
+
+    `private` にした場合は、レシーバを指定した `other.balance` もエラーになります（レシーバとして書けるのは `self` だけ）。
+
+- cat: オブジェクト指向
+  topic: クラス変数とインスタンス変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Foo
+      @@count = 0
+      @name = "class-level"
+      def initialize
+        @@count += 1
+      end
+      def self.count
+        @@count
+      end
+      def name
+        @name
+      end
+    end
+    Foo.new
+    f = Foo.new
+    p Foo.count, f.name
+  choices: ["2\nnil", "2\n\"class-level\"", "1\nnil", "1\n\"class-level\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `@@` で始まるクラス変数は、クラスとそのすべてのインスタンス（サブクラスも）で共有されます。`new` を2回呼んだので `2` です。
+
+    クラス定義の直下で代入した `@name` は、クラスオブジェクト自身のインスタンス変数（クラスインスタンス変数）で、各インスタンスの `@name` とは別物です。代入されていないインスタンス変数を参照すると `nil` になります。
+
+- cat: オブジェクト指向
+  topic: Mix-in（include）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Greet
+      def hello
+        "Greet"
+      end
+    end
+    class Parent
+      def hello
+        "Parent"
+      end
+    end
+    class Child < Parent
+      include Greet
+    end
+    puts Child.new.hello
+    p Child.ancestors.take(3)
+  choices: ["Greet\n[Child, Greet, Parent]", "Parent\n[Child, Parent, Greet]", "Greet\n[Greet, Child, Parent]", "Parent\n[Child, Greet, Parent]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `include` したモジュールは、継承チェーン上でそのクラスの直後（親クラスより前）に挿入されます。
+
+    メソッドは `ancestors` の順に探されるため、`Parent#hello` より先に `Greet#hello` が見つかります。
+
+- cat: オブジェクト指向
+  topic: Mix-in（prepend）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Loud
+      def say
+        super.upcase + "!"
+      end
+    end
+    class Person
+      prepend Loud
+      def say
+        "hello"
+      end
+    end
+    puts Person.new.say
+  choices: ['HELLO!', 'hello', 'hello!', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `prepend` したモジュールはクラスの**前**に挿入されるため、`Person#say` より先に `Loud#say` が呼ばれます。その中の `super` で本来の `Person#say` を呼び出せます。
+
+    `include` だった場合は `Person#say` が優先されるので `hello` と出力されます。
+
+- cat: オブジェクト指向
+  topic: モジュール
+  q: 次のモジュールについての説明として正しいものを2つ選択してください。
+  code: |
+    module Util
+      VERSION = "1.0"
+      def self.hello
+        "hi"
+      end
+    end
+  choices:
+    - '`Util.new` でインスタンスを生成できる'
+    - '`Util::VERSION` で定数を参照できる'
+    - '`Util.hello` でメソッドを呼び出せる'
+    - '`module Tool < Util` のように継承して別のモジュールを作れる'
+  answer: [1, 2]
+  verify: checks
+  checks:
+    - "Util.new"
+    - "exit(Util::VERSION == \"1.0\")"
+    - "exit(Util.hello == \"hi\")"
+    - "eval(\"module Tool < Util; end\")"
+  exp: |
+    モジュールはインスタンスを作れず（`new` メソッドがない）、継承もできません。
+
+    モジュール内の定数は `モジュール名::定数名`、`self.` を付けて定義したモジュールメソッドは `モジュール名.メソッド名` で呼び出せます。
+
+    モジュールの主な用途は、名前空間と Mix-in（`include` / `extend` / `prepend`）です。
+
+- cat: オブジェクト指向
+  topic: to_s
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Point
+      def initialize(x, y)
+        @x, @y = x, y
+      end
+      def to_s
+        "(#{@x}, #{@y})"
+      end
+    end
+    pt = Point.new(1, 2)
+    puts pt
+    puts "点: #{pt}"
+  choices: ["(1, 2)\n点: (1, 2)", "#<Point:0x...>\n点: (1, 2)", "(1, 2)\n点: #<Point:0x...>", "#<Point:0x...>\n点: #<Point:0x...>"]
+  answer: [0]
+  verify: output
+  exp: |
+    `puts` や式展開 `#{}` は、内部でオブジェクトの `to_s` を呼び出します。`to_s` を定義すると独自の文字列表現にできます。
+
+    `p` は `inspect` を使うので、`p pt` とした場合は `#<Point:0x... @x=1, @y=2>` のような表示になります。
+
+- cat: オブジェクト指向
+  topic: オープンクラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class String
+      def shout
+        upcase + "!"
+      end
+    end
+    class Greeter
+      def hi
+        "hello"
+      end
+    end
+    class Greeter
+      def hi
+        "hey".shout
+      end
+    end
+    puts Greeter.new.hi
+  choices: ['HEY!', 'hello', 'hey', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby のクラスはオープンクラスで、定義済みのクラス（組み込みの `String` なども）を再オープンしてメソッドを追加できます。
+
+    同じ名前のメソッドを再定義すると、後から定義した内容で上書きされます。
+
+- cat: オブジェクト指向
+  topic: クラスの継承関係
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Integer.superclass
+    p 1.is_a?(Comparable)
+    p 1.instance_of?(Numeric)
+  choices: ["Numeric\ntrue\nfalse", "Object\ntrue\nfalse", "Numeric\nfalse\nfalse", "Numeric\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Integer` の親クラスは `Numeric` です（`Integer` → `Numeric` → `Object`）。
+
+    `is_a?`（別名 `kind_of?`）は、親クラスやインクルードしているモジュールまで含めて判定します。`Numeric` は `Comparable` をインクルードしているので `true` です。
+
+    `instance_of?` はクラスが完全に一致する場合だけ `true` です。
+
+- cat: オブジェクト指向
+  topic: クラスメソッド
+  q: '__(1)__ に記述すると〔実行結果〕が出力されるコードを2つ選択してください。'
+  code: |
+    class Config
+      class << self
+        def env
+          "production"
+        end
+      end
+    end
+    p __(1)__
+  result: '"production"'
+  choices: ['Config.env', 'Config.new.env', 'Config::env', 'Config#env']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    `class << self` の中で定義したメソッドはクラスメソッド（クラスの特異メソッド）になり、`def self.env` と書くのと同じです。インスタンスからは呼び出せません。
+
+    クラスメソッドは `Config.env` のほか、`Config::env` の形でも呼び出せます。
+
+    `#` 以降はコメントになるため、`p Config#env` は `p Config` と同じで `Config` と出力されます。
+
+- cat: オブジェクト指向
+  topic: attr系メソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class User
+      attr_writer :name
+      def greet
+        "Hi, #{@name}"
+      end
+    end
+    u = User.new
+    puts u.greet
+    u.name = "Ken"
+    puts u.greet
+    p u.name
+  choices:
+    - '`Hi, ` と `Hi, Ken` が出力された後、`NoMethodError` が発生する'
+    - '`Hi, ` と `Hi, Ken` と `"Ken"` が出力される'
+    - '1回目の `puts` の時点で `NoMethodError` が発生する'
+    - '`Hi, nil` と `Hi, Ken` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "Hi,\nHi, Ken", error: NoMethodError}
+  exp: |
+    `attr_writer` は書き込み用のメソッド（`name=`）だけを定義します。読み出し用は `attr_reader`、両方まとめて定義するのは `attr_accessor` です。読み出し用メソッドがないため `u.name` は `NoMethodError` です。
+
+    代入されていない `@name` は `nil` で、`"#{nil}"` は空文字列になるので、1回目は `Hi, ` と出力されます。

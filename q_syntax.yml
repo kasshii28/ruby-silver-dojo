@@ -1,0 +1,542 @@
+# 文法
+- cat: 文法
+  topic: 変数名
+  q: ローカル変数名として有効なものを2つ選択してください。
+  choices: ['_count', '2nd_place', 'user-name', 'userName']
+  cm: true
+  answer: [0, 3]
+  verify: checks
+  checks:
+    - "_count = 1\np _count"
+    - "2nd_place = 1"
+    - "user-name = 1"
+    - "userName = 1\np userName"
+  exp: |
+    ローカル変数名は英小文字または `_` で始め、2文字目以降は英数字と `_` が使えます。
+
+    `2nd_place` のように数字で始まる名前は使えず、`user-name` は `-` が減算演算子と解釈されるため使えません。`userName` のように途中に大文字を含むのは有効です（慣習的にはスネークケース `user_name` で書きます）。
+
+    なお、大文字で始まると定数、`@` はインスタンス変数、`@@` はクラス変数、`$` はグローバル変数になります。
+
+- cat: 文法
+  topic: 数値リテラル
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1_000 + 0b1010 + 0o17 + 0x1F
+  choices: ['1056', '1046', '1057', '!`SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    数値リテラル中の `_` は桁区切りとして無視されるので `1_000` は 1000 です。
+
+    - `0b` は2進数：`0b1010` → 10
+    - `0o`（または先頭の `0`）は8進数：`0o17` → 15
+    - `0x` は16進数：`0x1F` → 31
+
+    合計 1000 + 10 + 15 + 31 = 1056 です。
+
+- cat: 文法
+  topic: 文字列リテラル
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    name = "Ruby"
+    puts 'Hello, #{name}\n'
+    puts "Hello, #{name}"
+  choices:
+    - |-
+      Hello, #{name}\n
+      Hello, Ruby
+    - |-
+      Hello, Ruby
+      Hello, Ruby
+    - |-
+      Hello, #{name}
+
+      Hello, Ruby
+    - |-
+      Hello, Ruby\n
+      Hello, Ruby
+  answer: [0]
+  verify: output
+  exp: |
+    シングルクォートの文字列では、式展開 `#{}` も `\n` などのエスケープも行われず、書いたとおりに出力されます（例外は `\'` と `\\` だけ）。
+
+    ダブルクォートの文字列では式展開とエスケープが有効になります。
+
+- cat: 文法
+  topic: '%記法'
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    lang = "ruby"
+    p %W(#{lang} rails)
+    p %i(ruby rails)
+  choices:
+    - |-
+      ["ruby", "rails"]
+      [:ruby, :rails]
+    - |-
+      ["\#{lang}", "rails"]
+      [:ruby, :rails]
+    - |-
+      ["ruby", "rails"]
+      ["ruby", "rails"]
+    - |-
+      [:ruby, :rails]
+      [:ruby, :rails]
+  answer: [0]
+  verify: output
+  exp: |
+    - `%w` … 空白区切りで文字列の配列を作る（式展開なし）
+    - `%W` … 文字列の配列（式展開あり）
+    - `%i` … シンボルの配列（`%I` は式展開あり）
+
+    小文字の `%w(#{lang} rails)` だと式展開されず `["\#{lang}", "rails"]` になります（`p` は `#{` を `\#{` と表示します）。
+
+- cat: 文法
+  topic: ヒアドキュメント
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    text = <<~EOS
+        Hello
+          Ruby
+      EOS
+    p text
+  choices: ['"Hello\n  Ruby\n"', '"    Hello\n      Ruby\n"', '"Hello\nRuby\n"', '"Hello\n  Ruby"']
+  answer: [0]
+  verify: output
+  exp: |
+    `<<~` は、最もインデントが浅い行に合わせて各行の先頭の空白を取り除きます（ここでは4つ）。行どうしの相対的なインデント（`Ruby` の前の2つ）は残ります。
+
+    終端の `EOS` のインデント位置は関係ありません。ヒアドキュメントの最後の行にも改行が含まれます。
+
+    `<<-` は終端識別子をインデントできるだけで、本文の空白はそのまま残ります。
+
+- cat: 文法
+  topic: コメント
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    # p 1
+    p 2 # p 3
+    =begin
+    p 4
+    =end
+    p 5
+  choices: ["2\n5", "2\n4\n5", "1\n2\n3\n4\n5", "2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `#` から行末まではコメントです。`=begin` から `=end` までは複数行コメントになります。
+
+    `=begin` と `=end` は行頭に書く必要があります。インデントするとコメントとして扱われません。
+
+- cat: 文法
+  topic: 文字リテラル
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p ?a
+    p ?a.ord
+    p 98.chr
+  choices: ["\"a\"\n97\n\"b\"", "?a\n97\n\"b\"", "\"a\"\n97\n98", "\"a\"\n\"97\"\n\"b\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `?a` は1文字の文字列 `"a"` を表すリテラルです。
+
+    `String#ord` は文字のコードポイント（`"a"` は 97）を返し、`Integer#chr` は逆に数値から1文字の文字列を返します。
+
+- cat: 文法
+  topic: 定数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    MAX = 10
+    MAX = 20
+    puts MAX
+  choices:
+    - '`20` と表示され、警告（already initialized constant）が出る'
+    - '`10` と表示される'
+    - '`20` とだけ表示され、警告は出ない'
+    - 'エラーが発生し、何も表示されない'
+  answer: [0]
+  verify: run
+  expect: {out: "20", stderr: "already initialized constant"}
+  exp: |
+    定数への再代入はエラーにはならず、警告が出たうえで値が変わります。
+
+    ただし、メソッドの中で定数に代入しようとすると `dynamic constant assignment` という `SyntaxError` になります。
+
+    ```ruby
+    def set_max
+      MAX = 100   # SyntaxError
+    end
+    ```
+
+- cat: 文法
+  topic: 変数のスコープ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 10
+    def show
+      puts x
+    end
+    show
+  choices: ['`10` と出力される', '空行が出力される', '`NameError` が発生する', '`SyntaxError` が発生する']
+  answer: [2]
+  verify: run
+  expect: {error: NameError}
+  exp: |
+    `def` は新しいスコープを作るため、メソッドの外で定義したローカル変数 `x` はメソッド内から参照できません。`x` は未定義のローカル変数またはメソッドとみなされ、`NameError` になります。
+
+    一方、ブロック・`if`・`while` は新しいスコープを作らないので、外側のローカル変数を参照できます。
+
+- cat: 文法
+  topic: ブロックローカル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 10
+    [1, 2].each do |i; x|
+      x = i * 100
+    end
+    p x
+  choices: ['10', '100', '200', 'nil']
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック引数の `;` の後ろに書いた変数はブロックローカル変数で、外側の同名の変数とは別物になります。そのため外側の `x` は 10 のままです。
+
+    `|i|` だけにすると、ブロック内の `x = ...` は外側の `x` を書き換えるので `200` になります。
+
+- cat: 文法
+  topic: ループとスコープ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    for i in 1..3
+      j = i * 2
+    end
+    p i
+    p j
+  choices: ["3\n6", '!`NameError` が発生する', "nil\nnil", "1\n2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `for` は `each` と違って新しいスコープを作りません。ループ変数 `i` や、ループ内で初めて代入した `j` は、ループの後でも参照できます。
+
+    `(1..3).each { |i| j = i * 2 }` のようにブロックで書いた場合、ブロック内で初めて定義された変数はブロックの外から参照できず `NameError` になります。
+
+- cat: 文法
+  topic: 真偽値
+  q: if の条件式で「偽」として扱われる値を2つ選択してください。
+  choices: ['0', '""', 'nil', 'false', '[]']
+  cm: true
+  answer: [2, 3]
+  verify: checks
+  checks:
+    - "abort if 0"
+    - "abort if \"\""
+    - "abort if nil"
+    - "abort if false"
+    - "abort if []"
+  exp: |
+    Ruby で偽になるのは `false` と `nil` の2つだけです。
+
+    `0`、空文字列 `""`、空配列 `[]` はすべて真として扱われます。C や JavaScript、Python と違う点なので注意しましょう。
+
+- cat: 文法
+  topic: case式
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def judge(v)
+      case v
+      when Integer then "int"
+      when 1.0..2.0 then "range"
+      when /ab/ then "regexp"
+      else "other"
+      end
+    end
+    puts judge(1.5), judge("cab"), judge(2)
+  choices: ["range\nregexp\nint", "other\nregexp\nint", "range\nother\nint", "range\nregexp\nrange"]
+  answer: [0]
+  verify: output
+  exp: |
+    `case` の `when` は `===` で比較します。`===` の意味は左辺のクラスによって変わります。
+
+    - `Integer === 2` … クラスのインスタンスか
+    - `(1.0..2.0) === 1.5` … 範囲に含まれるか
+    - `/ab/ === "cab"` … 正規表現にマッチするか
+
+    上から順に評価され、最初に一致した節だけが実行されます。`2` は範囲 `1.0..2.0` にも含まれますが、先に `Integer` に一致するので `"int"` です。
+
+- cat: 文法
+  topic: 自己代入
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = nil
+    b = false
+    c = 0
+    a ||= 1
+    b ||= 2
+    c ||= 3
+    p [a, b, c]
+  choices: ['[1, 2, 0]', '[1, false, 0]', '[1, 2, 3]', '[nil, false, 0]']
+  answer: [0]
+  verify: output
+  exp: |
+    `a ||= x` は `a || (a = x)` と同じ意味で、`a` が `nil` か `false` のときだけ代入されます。
+
+    `c` の `0` は真なので代入されず、そのまま `0` です。
+
+- cat: 文法
+  topic: 演算子の優先順位
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = false || true
+    b = false or true
+    p a, b
+  choices: ["true\nfalse", "true\ntrue", "false\ntrue", "false\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `||` は `=` より優先順位が高いので、`a = (false || true)` となり `a` は `true` です。
+
+    一方 `or` は `=` より優先順位が低いので、`(b = false) or true` と解釈され、`b` には `false` が入ります。`and` と `not` も同様に優先順位が低い演算子です。
+
+- cat: 文法
+  topic: 多重代入
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a, *b, c = 1, 2, 3, 4, 5
+    p b
+    x, y = [10, 20, 30]
+    p y
+  choices: ["[2, 3, 4]\n20", "[2, 3, 4, 5]\n20", "2\n[20, 30]", "[2, 3, 4]\n[20, 30]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `*` を付けた変数は、他の変数に割り当てた残りの要素を配列で受け取ります。先頭の `a` に 1、末尾の `c` に 5 が入り、残りの `[2, 3, 4]` が `b` に入ります。
+
+    右辺が配列1つの場合は展開されて各変数に代入され、余った `30` は捨てられます。
+
+- cat: 文法
+  topic: ループ制御
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    i = 0
+    result = while i < 5
+      i += 1
+      next if i == 2
+      break i * 10 if i == 4
+    end
+    p result
+  choices: ['40', 'nil', '4', '50']
+  answer: [0]
+  verify: output
+  exp: |
+    `while` は通常 `nil` を返しますが、`break` に値を渡すと、その値が `while` 式の戻り値になります。
+
+    `next` はその回の残りの処理を飛ばして次の繰り返し（条件判定）へ進みます。`i` が 4 のとき `break i * 10` が実行され、結果は `40` です。
+
+- cat: 文法
+  topic: 繰り返しメソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    1.step(10, 4) { |i| print i, " " }
+  choices: ['1 5 9', '1 4 7 10', '1 5 9 13', '4 8']
+  answer: [0]
+  verify: output
+  exp: |
+    `Numeric#step(上限, 増分)` は、自身から上限まで増分ずつ増やしながらブロックを実行します。1, 5, 9 と進み、次の 13 は上限 10 を超えるので実行されません。
+
+    似たメソッドに `upto`（1ずつ増やす）、`downto`（1ずつ減らす）、`times`（0 から n-1 まで）があります。
+
+- cat: 文法
+  topic: 例外処理
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    begin
+      puts "A"
+      raise ArgumentError
+    rescue TypeError
+      puts "B"
+    rescue ArgumentError, NameError
+      puts "C"
+    else
+      puts "D"
+    ensure
+      puts "E"
+    end
+  choices: ["A\nC\nE", "A\nB\nE", "A\nC\nD\nE", "A\nE"]
+  answer: [0]
+  verify: output
+  exp: |
+    発生した例外は、上の `rescue` 節から順に照合されます。`ArgumentError` は2つ目の節で捕捉されます（1つの `rescue` にカンマ区切りで複数のクラスを書けます）。
+
+    - `else` … 例外が発生しなかったときだけ実行
+    - `ensure` … 例外の有無にかかわらず必ず実行
+
+- cat: 文法
+  topic: retry
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    count = 0
+    begin
+      count += 1
+      raise "error" if count < 3
+      puts "ok: #{count}"
+    rescue
+      retry
+    end
+  choices: ['ok: 3', 'ok: 1', 'ok: 2', '!無限ループになる']
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue` 節の中で `retry` を呼ぶと、`begin` 節の先頭からやり直します。
+
+    `count` は `begin` の外で定義した変数で、`begin` は新しいスコープを作らないのでリセットされません。3回目で例外が発生しなくなり `ok: 3` と出力されます。
+
+- cat: 文法
+  topic: 例外クラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    begin
+      raise "oops"
+    rescue => e
+      p e.class
+      p e.message
+    end
+  choices: ["RuntimeError\n\"oops\"", "StandardError\n\"oops\"", "Exception\n\"oops\"", "String\n\"oops\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `raise` に文字列だけを渡すと `RuntimeError` が発生し、その文字列がメッセージになります。
+
+    `rescue => e` のように例外クラスを省略すると、`StandardError` とそのサブクラスを捕捉します。`RuntimeError` は `StandardError` のサブクラスなので捕捉されます。
+
+- cat: 文法
+  topic: メソッドの引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def foo(a, b = 2, *c, d)
+      p [a, b, c, d]
+    end
+    foo(1, 3, 5, 7, 9)
+  choices: ['[1, 3, [5, 7], 9]', '[1, 2, [3, 5, 7], 9]', '[1, 3, [5, 7, 9], nil]', '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    引数はまず必須引数に割り当てられます。先頭の `a` に 1、末尾の `d` に 9 が入ります。
+
+    残った 3, 5, 7 のうち、デフォルト値付きの `b` に 3 が入り、さらに残った 5, 7 が可変長引数 `c` に配列で入ります。
+
+- cat: 文法
+  topic: キーワード引数
+  q: '__(1)__ に記述すると〔実行結果〕が出力されるコードを2つ選択してください。'
+  code: |
+    def order(item, size: "M", count:)
+      "#{item}-#{size}-#{count}"
+    end
+    puts __(1)__
+  result: coffee-M-2
+  choices: ['order("coffee", count: 2)', 'order("coffee", 2)', 'order(item: "coffee", count: 2)', 'order("coffee", size: "M", count: 2)']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    `count:` のようにデフォルト値のないキーワード引数は必須で、省略すると `ArgumentError` になります。`size:` はデフォルト値 `"M"` があるので省略できます。
+
+    キーワード引数は名前を付けて渡す必要があり、`order("coffee", 2)` のように位置で渡すことはできません。また `item` は通常の引数なので、`item: "coffee"` のようにキーワード形式では渡せません。
+
+- cat: 文法
+  topic: 可変長キーワード引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def setup(name, **opts)
+      p name
+      p opts
+    end
+    setup("app", port: 80, debug: true)
+  choices: ["\"app\"\n{:port=>80, :debug=>true}", "\"app\"\n[:port, 80, :debug, true]", "\"app\"\n[{:port=>80, :debug=>true}]", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `**` を付けた引数は、定義されていないキーワード引数をまとめてハッシュ（キーはシンボル）で受け取ります。
+
+    `*` を付けた可変長引数が配列で受け取るのと区別して覚えましょう。
+
+- cat: 文法
+  topic: ブロックとyield
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def calc(x)
+      return x unless block_given?
+      yield(x) * 2
+    end
+    p calc(3)
+    p calc(3) { |n| n + 1 }
+  choices: ["3\n8", "3\n4", "nil\n8", "6\n8"]
+  answer: [0]
+  verify: output
+  exp: |
+    `block_given?` はメソッドにブロックが渡されたかどうかを返します。
+
+    ブロックなしの呼び出しでは `x` をそのまま返して `3`。ブロックありでは `yield(x)` でブロックを実行し（3 + 1 = 4）、それを2倍して `8` になります。
+
+- cat: 文法
+  topic: Procとlambda
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    pr = Proc.new { |a, b| "#{a}-#{b}" }
+    la = ->(a, b) { "#{a}-#{b}" }
+    puts pr.call(1)
+    puts la.call(1)
+  choices:
+    - '`1-` と出力された後、`ArgumentError` が発生する'
+    - '`ArgumentError` が発生し、何も出力されない'
+    - '`1-` が2回出力される'
+    - '`1-` と `1-nil` が出力される'
+  answer: [0]
+  verify: run
+  expect: {out: "1-", error: ArgumentError}
+  exp: |
+    `Proc.new`（や `proc`）で作った Proc は引数の数に寛容で、足りない引数は `nil`、余分な引数は無視されます。`"#{nil}"` は空文字列なので `1-` と出力されます。
+
+    lambda（`->` や `lambda`）は引数の数を厳密にチェックするため、`ArgumentError` が発生します。
+
+    また、`return` の動きも異なり、lambda 内の `return` は lambda 自身から抜けるだけです。
+
+- cat: 文法
+  topic: メソッドの戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def minmax(a)
+      return a.min, a.max
+    end
+    x = minmax([3, 1, 4])
+    p x
+  choices: ['[1, 4]', '1', '4', '!`SyntaxError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `return` にカンマ区切りで複数の値を渡すと、配列にまとめて返されます。
+
+    `min, max = minmax([3, 1, 4])` のように多重代入で受け取るのが定番の使い方です。
+
+- cat: 文法
+  topic: 定数のスコープ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    NAME = "top"
+    module App
+      NAME = "app"
+      class Config
+        def name
+          NAME
+        end
+      end
+    end
+    p App::Config.new.name
+    p ::NAME
+  choices: ["\"app\"\n\"top\"", "\"top\"\n\"top\"", "\"app\"\n\"app\"", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    定数は、まずコードの入れ子構造（レキシカルスコープ）の内側から順に探されます。`App` の中にあるクラスから参照した `NAME` は `App::NAME` なので `"app"` です。
+
+    `::NAME` のように先頭に `::` を付けると、トップレベルの定数を参照します。
