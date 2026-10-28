@@ -1,11 +1,11 @@
 // Starting, archiving and scoring exams.
 import type { Category, ExamRecord, Question, Session } from '../lib/types';
-import { QUESTIONS, keyOf, question } from './data';
+import { OFFICIAL, ORIGINAL, QUESTIONS, keyOf, question } from './data';
 import { navigate } from './router';
 import { MAX_RECORDS, save, state } from './state';
 
 export type ExamSpec =
-  | { kind: 'mock' | 'mini' | 'all' | 'wrong' }
+  | { kind: 'mock' | 'mini' | 'all' | 'wrong' | 'official' | 'official-random' }
   | { kind: 'cat'; cat: Category }
   | { kind: 'ids'; ids: number[]; title: string };
 
@@ -20,14 +20,14 @@ export function shuffle<T>(a: readonly T[]): T[] {
 
 export const sameSet = (a: number[], b: number[]) => a.length === b.length && a.every((x) => b.includes(x));
 export const wrongIds = () => QUESTIONS.filter((q) => state.hist[q.id] && !state.hist[q.id]?.ok).map((q) => q.id);
-export const catCount = (c: Category) => QUESTIONS.filter((q) => q.cat === c).length;
+export const catCount = (c: Category) => ORIGINAL.filter((q) => q.cat === c).length;
 
 /** Display order of a question's choices: display position → original index. */
 export const orderOf = (q: Question, perm: Record<number, number[]>) => perm[q.id] ?? q.choices.map((_, k) => k);
 export const lettersOf = (orig: number[], order: number[]) => orig.map((o) => keyOf(order.indexOf(o))).sort().join('・');
 
-function makeSession(title: string, ids: number[]): Session {
-  const shuffled = shuffle(ids);
+function makeSession(title: string, ids: number[], ordered = false): Session {
+  const shuffled = ordered ? ids.slice() : shuffle(ids);
   const perm: Record<number, number[]> = {};
   shuffled.forEach((id) => {
     perm[id] = shuffle(question(id).choices.map((_, k) => k));
@@ -36,19 +36,22 @@ function makeSession(title: string, ids: number[]): Session {
 }
 
 export function startExam(spec: ExamSpec): void {
-  const all = QUESTIONS.map((q) => q.id);
+  const all = ORIGINAL.map((q) => q.id);
+  const official = OFFICIAL.map((q) => q.id);
   let title: string, ids: number[];
   switch (spec.kind) {
     case 'mock': ids = shuffle(all).slice(0, 50); title = '模擬試験'; break;
     case 'mini': ids = shuffle(all).slice(0, 10); title = 'ミニテスト'; break;
     case 'all': ids = all; title = '全問チャレンジ'; break;
-    case 'cat': ids = QUESTIONS.filter((q) => q.cat === spec.cat).map((q) => q.id); title = `分野別：${spec.cat}`; break;
+    case 'cat': ids = ORIGINAL.filter((q) => q.cat === spec.cat).map((q) => q.id); title = `分野別：${spec.cat}`; break;
+    case 'official': ids = official; title = '公式模擬問題'; break;
+    case 'official-random': ids = official; title = '公式模擬問題（ランダム）'; break;
     case 'wrong': ids = wrongIds(); title = 'まちがえた問題'; break;
     case 'ids': ids = spec.ids; title = spec.title; break;
   }
   if (!ids.length) return;
   archiveCurrent();
-  state.current = makeSession(title, ids);
+  state.current = makeSession(title, ids, spec.kind === 'official');
   save();
   navigate('quiz');
 }

@@ -4,7 +4,7 @@ import { parse } from 'yaml';
 import { CATEGORIES, type Category, type Question } from './types';
 
 // Ids are assigned in this order and saved in users' study history, so never reorder these files.
-const FILES = ['q_syntax', 'q_lib', 'q_oop', 'q_syntax2', 'q_lib2', 'q_oop2', 'q_extra'];
+const FILES = ['q_syntax', 'q_lib', 'q_oop', 'q_syntax2', 'q_lib2', 'q_oop2', 'q_extra', 'q_official'];
 
 const sources = import.meta.glob<string>('../data/questions/*.yml', { query: '?raw', import: 'default', eager: true });
 
@@ -20,7 +20,7 @@ function toQuestion(item: unknown, id: number, errors: string[]): Question | nul
     return null;
   };
   if (!isRaw(item)) return fail('not a mapping');
-  const { cat, topic, q, code, result, choices, answer, cm, exp, verify } = item;
+  const { cat, topic, q, code, result, choices, answer, cm, exp, verify, official } = item;
   if (!isCategory(cat)) return fail(`unknown cat ${JSON.stringify(cat)}`);
   if (typeof topic !== 'string' || !topic) return fail('topic is missing');
   if (typeof q !== 'string' || !q) return fail('q is missing');
@@ -34,6 +34,8 @@ function toQuestion(item: unknown, id: number, errors: string[]): Question | nul
   const want = Number(/([2-9])つ選択/.exec(q)?.[1] ?? 1);
   if (answer.length !== want) return fail(`answer has ${answer.length} items but the question asks for ${want}`);
   if (cm !== undefined && typeof cm !== 'boolean') return fail('cm must be true or false');
+  const no = official === undefined ? undefined : Number(official);
+  if (no !== undefined && !(Number.isInteger(no) && no > 0)) return fail('official must be a positive integer');
   return {
     id,
     cat,
@@ -45,6 +47,7 @@ function toQuestion(item: unknown, id: number, errors: string[]): Question | nul
     answer: answer as number[],
     cm: cm ?? (verify === 'output' || verify === 'blank'),
     exp,
+    ...(no === undefined ? {} : { official: no }),
   };
 }
 

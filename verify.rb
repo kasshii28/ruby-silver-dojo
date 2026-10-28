@@ -4,7 +4,7 @@ require "open3"
 require "tmpdir"
 require "json"
 
-FILES = %w[q_syntax q_lib q_oop q_syntax2 q_lib2 q_oop2 q_extra].map { |f| File.join(__dir__, "src/data/questions", "#{f}.yml") }
+FILES = %w[q_syntax q_lib q_oop q_syntax2 q_lib2 q_oop2 q_extra q_official].map { |f| File.join(__dir__, "src/data/questions", "#{f}.yml") }
 BLANK = "__(1)__"
 
 def norm(s)
@@ -52,9 +52,12 @@ questions.each_with_index do |q, i|
     if exp["error"]
       c = err_class(r[:err])
       problems << "expected #{exp['error']} but got #{c.inspect} (ok=#{r[:ok]}) #{r[:err].lines.first}" if r[:ok] || c != exp["error"]
+    elsif exp.key?("status")
+      problems << "exit status #{r[:status]} != #{exp['status']}" if r[:status] != exp["status"]
     else
       problems << "unexpected error: #{r[:err].lines.first}" unless r[:ok]
     end
+    problems << "stderr is not empty: #{r[:err]}" if exp["quiet"] && !r[:err].empty?
     problems << "stderr lacks #{exp['stderr'].inspect}: #{r[:err]}" if exp["stderr"] && !r[:err].include?(exp["stderr"])
     failures << "#{label}: #{problems.join('; ')}" unless problems.empty?
   when "blank"
@@ -66,7 +69,8 @@ questions.each_with_index do |q, i|
     good = q["choices"].each_index.to_a - good if q["negate"]
     failures << "#{label}: choices #{q['negate'] ? 'NOT ' : ''}producing result = #{good}, marked = #{ans}" if good != ans
   when "checks"
-    setup = q["code"].to_s
+    # `setup` replaces the shown code when the code itself can't run (e.g. it has a blank)
+    setup = q.key?("setup") ? q["setup"].to_s : q["code"].to_s
     truthy = q["checks"].each_index.select do |k|
       r = run_ruby(setup + "\n" + q["checks"][k] + "\n")
       r[:ok]
