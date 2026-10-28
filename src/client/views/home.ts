@@ -1,4 +1,4 @@
-import { CATS, PASS, QUESTIONS } from '../data';
+import { CATS, OFFICIAL, OFFICIAL_SOURCE, ORIGINAL, PASS, QUESTIONS } from '../data';
 import { $, armButton, esc, mount } from '../dom';
 import { navigate } from '../router';
 import { catCount, startExam, stats, wrongIds, type ExamSpec } from '../session';
@@ -7,7 +7,7 @@ import { fmtDate } from './shared';
 
 function specOf(b: HTMLElement): ExamSpec | null {
   const kind = b.dataset.start;
-  if (kind === 'mock' || kind === 'mini' || kind === 'all' || kind === 'wrong') return { kind };
+  if (kind === 'mock' || kind === 'mini' || kind === 'all' || kind === 'wrong' || kind === 'official' || kind === 'official-random') return { kind };
   const cat = CATS.find((c) => c === b.dataset.cat);
   return kind === 'cat' && cat ? { kind, cat } : null;
 }
@@ -16,7 +16,7 @@ export function renderHome(): void {
   const { hist, current, records } = state;
   const wrong = wrongIds().length;
   const done = Object.keys(hist).length, okCnt = Object.values(hist).filter((h) => h.ok).length;
-  let html = `<p class="intro">Ruby技術者認定試験 Silver（version 3）のオリジナル問題 ${QUESTIONS.length} 問。出題順と選択肢の並びは毎回ランダムで、1問ごとに正解と解説を確認できます。</p>`;
+  let html = `<p class="intro">Ruby技術者認定試験 Silver（version 3）のオリジナル問題 ${ORIGINAL.length} 問と、公式模擬問題 ${OFFICIAL.length} 問。出題順と選択肢の並びは毎回ランダムで、1問ごとに正解と解説を確認できます。</p>`;
   if (current) {
     const s = stats(current);
     html += `<section class="resume" aria-label="解きかけの回">
@@ -25,10 +25,11 @@ export function renderHome(): void {
   }
   const exam = (title: string, count: string, desc: string, btn: string) => `<li class="exam"><div class="txt"><h3>${title}<span class="count">${count}</span></h3><p>${desc}</p></div>${btn}</li>`;
   html += `<section class="panel" aria-labelledby="h-exams"><div class="panel-head"><h2 id="h-exams">試験を選ぶ</h2></div><ul class="rows">
-    ${exam('模擬試験', '50問', '本試験と同じ問題数。全範囲からランダムに出題します。', `<button class="btn primary" type="button" data-start="mock">スタート</button>`)}
-    ${exam('ミニテスト', '10問', 'すき間時間向け。全範囲からランダムに10問。', `<button class="btn" type="button" data-start="mini">スタート</button>`)}
-    ${exam('全問チャレンジ', `${QUESTIONS.length}問`, '全問題をランダムな順番で解きます。', `<button class="btn" type="button" data-start="all">スタート</button>`)}
+    ${exam('模擬試験', '50問', '本試験と同じ問題数。オリジナル問題の全範囲からランダムに出題します。', `<button class="btn primary" type="button" data-start="mock">スタート</button>`)}
+    ${exam('ミニテスト', '10問', 'すき間時間向け。オリジナル問題からランダムに10問。', `<button class="btn" type="button" data-start="mini">スタート</button>`)}
+    ${exam('全問チャレンジ', `${ORIGINAL.length}問`, 'オリジナル問題をすべてランダムな順番で解きます。', `<button class="btn" type="button" data-start="all">スタート</button>`)}
     ${exam('分野別', '', '選んだ分野の問題をすべてランダムな順番で解きます。', `<div class="chips">${CATS.map((c) => `<button class="btn" type="button" data-start="cat" data-cat="${esc(c)}">${esc(c)}<span>${catCount(c)}</span></button>`).join('')}</div>`)}
+    ${exam('公式模擬問題', `${OFFICIAL.length}問`, `Ruby Association が公開している<a href="${OFFICIAL_SOURCE}" target="_blank" rel="noopener">サンプル問題</a>。誤記を直し、解説はこのサイトで書き下ろしています。`, `<div class="chips"><button class="btn" type="button" data-start="official">番号順</button><button class="btn" type="button" data-start="official-random">ランダム</button></div>`)}
     ${exam('まちがえた問題', `${wrong}問`, wrong ? '前回まちがえた問題だけを解き直します。正解すると対象から外れます。' : 'まちがえた問題はまだありません。', `<button class="btn" type="button" data-start="wrong" ${wrong ? '' : 'disabled'}>スタート</button>`)}
   </ul></section>`;
   html += `<section class="panel" aria-labelledby="h-hist"><div class="panel-head"><h2 id="h-hist">受験履歴</h2><span class="meta">回答した問題 <b>${done}</b> / ${QUESTIONS.length}・前回正解 <b>${okCnt}</b></span></div>`;

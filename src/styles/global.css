@@ -88,6 +88,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .exam h3 { margin: 0; font-size: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .exam h3 .count { font-family: var(--font-code); font-size: 13px; color: var(--muted); font-weight: 400; }
 .exam p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.exam p a, footer a { color: var(--ruby); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chips .btn { padding: 6px 12px; }
 .chips .btn span { font-family: var(--font-code); color: var(--muted); font-size: 12px; margin-left: 4px; }
@@ -125,6 +126,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .tag { font-size: 12px; background: var(--chip); border-radius: 4px; padding: 2px 8px; color: var(--muted); }
 .tag.multi { background: var(--fg); color: var(--bg); font-weight: 700; }
 .tag.id { font-family: var(--font-code); }
+.tag.official { background: var(--ruby); color: var(--surface); font-weight: 700; }
 .qtext { margin: 0; font-size: 17px; text-wrap: pretty; }
 .blank { display: inline-block; font-family: var(--font-code); font-size: .9em; border: 1.5px solid currentColor; border-radius: 4px; padding: 0 .45em; line-height: 1.5; margin: 0 2px; }
 .code { display: flex; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-size: 14px; line-height: 1.65; }

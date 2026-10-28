@@ -1,0 +1,1053 @@
+# 公式模擬問題（Ruby Association 公開の Silver version 3 サンプル問題）
+# 出典: https://github.com/ruby-association/prep-test/blob/version3/silver_ja.md （commit bcbfe44）
+# 問題文と選択肢は出典にもとづき、誤記を修正しています。解説はこのサイトのオリジナルです。
+# `official` は出典の問題番号。修正点の一覧は docs/official-prep-test.md を参照。
+- cat: 文法
+  official: 1
+  topic: 真偽値
+  q: Rubyにおける真の値として正しいものをすべて選んでください。(2つ選択)
+  choices: ['`""`', '`0`', '`false`', '`nil`']
+  answer: [0, 1]
+  verify: checks
+  checks:
+    - 'exit(!!(""))'
+    - 'exit(!!(0))'
+    - 'exit(!!(false))'
+    - 'exit(!!(nil))'
+  exp: |
+    Ruby で偽になるのは `false` と `nil` の2つだけです。それ以外の値はすべて真として扱われます。
+
+    空文字列 `""` や `0` も真です。他の言語の「空や 0 は偽」という感覚で選ばないよう注意しましょう。
+
+- cat: 文法
+  official: 2
+  topic: 予約語
+  q: Rubyの予約語として正しいものをすべて選んでください。(2つ選択)
+  choices: ['`each`', '`rand`', '`class`', '`send`', '`true`']
+  answer: [2, 4]
+  verify: checks
+  checks:
+    - 'begin; eval("each = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("rand = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("class = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("send = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("true = 1"); exit(false); rescue SyntaxError; exit(true); end'
+  exp: |
+    `class` と `true` は予約語なので、変数名などには使えません（`class = 1` は文法エラー）。
+
+    `each`・`rand`・`send` はメソッド名であって予約語ではありません。紛らわしいですが `rand = 1` のように変数名にもできてしまいます。
+
+- cat: 文法
+  official: 3
+  topic: 変数名
+  q: Rubyの変数名として正しいものを選んでください。(1つ選択)
+  choices: ['`3y`', '`false`', '`_9class`', '`xyz$`']
+  answer: [2]
+  verify: checks
+  checks:
+    - '3y = 1'
+    - 'false = 1'
+    - "_9class = 1\np _9class"
+    - 'xyz$ = 1'
+  exp: |
+    ローカル変数名は英小文字か `_` で始め、2文字目以降は英数字と `_` を使います。
+
+    - `3y` … 数字で始まるので使えません。
+    - `false` … 予約語なので使えません。
+    - `_9class` … `_` で始まり、あとは英数字なので使えます。予約語 `class` を**含む**名前は問題ありません。
+    - `xyz$` … `$` は先頭に置くとグローバル変数の印になりますが、途中や末尾には使えません。
+
+    **公式版からの修正**: 選択肢の記号が (a)(b)(c)(e) と (d) が抜けていました。
+
+- cat: 文法
+  official: 4
+  topic: 式展開
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    $code = "CODE"
+    __(1)__
+  result: i like writing CODE
+  choices:
+    - 'puts "i like writing #{$code}"'
+    - 'puts "i like writing #$code"'
+    - "puts 'i like writing #{$code}'"
+    - "puts 'i like writing #$code'"
+  answer: [0, 1]
+  verify: blank
+  exp: |
+    式展開 `#{...}` はダブルクォートの文字列でだけ働きます。シングルクォートでは `#{$code}` がそのままの文字として出力されます。
+
+    グローバル変数・インスタンス変数・クラス変数を埋め込むときは、`{}` を省略して `#$code` や `#@name` と書くこともできます。
+
+- cat: 文法
+  official: 5
+  topic: 整数リテラル（8進数）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    num = 025
+    puts num
+  choices: ['nil', '025', '21', '25']
+  answer: [2]
+  verify: output
+  exp: |
+    先頭に `0` が付いた整数リテラルは8進数です。8進数の `25` は 2×8 + 5 = 21 なので、`puts` は10進数で `21` を出力します。
+
+    ほかに `0b`（2進数）、`0o`（8進数）、`0x`（16進数）の接頭辞もあります。
+
+- cat: 文法
+  official: 6
+  topic: 三項演算子
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    x = "Hello"
+    y = x.empty? ? 1 : 2
+    p y
+  choices: ['1', '2', '"Hello"', 'true']
+  answer: [1]
+  verify: output
+  exp: |
+    `条件 ? 式1 : 式2` は、条件が真なら式1、偽なら式2の値になります。
+
+    `"Hello".empty?` は `false` なので、`y` には `2` が入ります。`empty?` の `?` はメソッド名の一部で、そのあとの ` ? ` が三項演算子です。
+
+- cat: 文法
+  official: 7
+  topic: case と範囲
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    amount = 120
+
+    size = case amount
+      when 1..120; "S"
+      when 120..170; "M"
+      when 170..200; "L"
+      else "XL"
+    end
+
+    p size
+  choices: ['"S"', '"M"', '"L"', '"XL"']
+  answer: [0]
+  verify: output
+  exp: |
+    `case` は上の `when` から順に `範囲 === 値` を調べ、最初に一致した節だけを実行します。
+
+    `1..120` は終端の `120` を含む範囲なので、最初の `when` で一致して `"S"` になります。`120..170` も `120` を含みますが、そこまで調べられません。終端を含めたくない場合は `1...120` と書きます。
+
+    **公式版からの修正**: 問題文（「実行結果として正しいものを…」）が選択肢のあとに置かれていたので、コードの前に移しました。
+
+- cat: 文法
+  official: 8
+  topic: ブロック変数のスコープ
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    item = "apple"
+
+    ["banana", "carrot", "daikon"].each do |item|
+      puts item
+    end
+
+    puts item
+  choices:
+    - '!文法エラーが発生する'
+    - '!例外が発生する'
+    - |-
+      banana
+      carrot
+      daikon
+      daikon
+    - |-
+      banana
+      carrot
+      daikon
+      apple
+  answer: [3]
+  verify: output
+  exp: |
+    ブロック引数 `|item|` は、外側に同じ名前の変数があってもブロックの中だけの別の変数になります。
+
+    そのためブロックの中で `item` に入る値は外側の `item` を書き換えず、ブロックのあとの `puts item` は元の `"apple"` を出力します。
+
+- cat: 文法
+  official: 9
+  topic: ブロックとクロージャ
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    x = 0
+
+    4.times do |i|
+      x += i
+    end
+
+    p x
+  choices: ['0', '4', '6', '!文法エラーが発生する']
+  answer: [2]
+  verify: output
+  exp: |
+    `4.times` はブロックに `0`, `1`, `2`, `3` を順に渡します（`4` は含みません）。
+
+    ブロックは外側のローカル変数 `x` を読み書きできるので、`x` は 0 + 1 + 2 + 3 = `6` になります。
+
+- cat: 組み込みライブラリ
+  official: 10
+  topic: String（each_char）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    s = "abcde"
+    p s.each_char.map { |i|
+      i * 2
+    }
+  choices:
+    - '[97, 98, 99, 100, 101]'
+    - '[194, 196, 198, 200, 202]'
+    - '["a", "b", "c", "d", "e"]'
+    - '["aa", "bb", "cc", "dd", "ee"]'
+    - '!実行時にエラーになる'
+  answer: [3]
+  verify: output
+  exp: |
+    `each_char` はブロックなしで呼ぶと、1文字ずつの**文字列**を返す Enumerator になります。文字コード（整数）ではありません。
+
+    `map` はその各文字に `i * 2` を適用し、`String#*` は文字列を指定回数くり返すので `["aa", "bb", "cc", "dd", "ee"]` になります。
+
+- cat: 組み込みライブラリ
+  official: 11
+  topic: Enumerable#tally
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    p "cocoa".chars.tally
+  choices:
+    - '{99=>2, 111=>2, 97=>1}'
+    - '{?c=>2, ?o=>2, ?a=>1}'
+    - '{"c"=>2, "o"=>2, "a"=>1}'
+    - '!実行時にエラーになる'
+  answer: [2]
+  verify: output
+  exp: |
+    `chars` は1文字ずつの文字列の配列 `["c", "o", "c", "o", "a"]` を返します。
+
+    `tally` は同じ要素の個数を数え、`{要素 => 個数}` のハッシュを返します。キーは最初に現れた順に並びます。
+
+    なお Ruby 3.4 以降はハッシュの表示形式が `{"c" => 2, "o" => 2, "a" => 1}` に変わりましたが、試験の対象（Ruby 3.1）ではこの選択肢の形です。
+
+- cat: 組み込みライブラリ
+  official: 12
+  topic: String（gsub）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    puts "blah blah blah".__(1)__(/blah/, "yay")
+  result: yay yay yay
+  choices: ['sub', 'gsub', 'replace', 'replace_all']
+  answer: [1]
+  verify: blank
+  exp: |
+    - `gsub` … パターンに一致した部分を**すべて**置き換えます。
+    - `sub` … 最初に一致した1か所だけを置き換えるので `yay blah blah` になります。
+    - `replace` … 文字列全体を引数の文字列で置き換えるメソッドで、引数は1つなので `ArgumentError` です。
+    - `replace_all` … String にこの名前のメソッドはありません。
+
+- cat: 文法
+  official: 13
+  topic: if / elsif / else
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    s = "pear"
+
+    if s.empty?
+      puts "blank"
+    elsif s.length < 5
+      puts "short"
+    else
+      puts "long"
+    end
+  choices: ['blank', 'short', 'long', '!例外が発生する']
+  answer: [1]
+  verify: output
+  exp: |
+    `if` / `elsif` は上から順に条件を調べ、最初に真になった節だけを実行します。
+
+    `"pear"` は空ではなく、長さは `4` で `4 < 5` が真なので `short` が出力されます。
+
+- cat: 文法
+  official: 14
+  topic: ぼっち演算子（&.）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    ["foo: abc", "bar: 100"].each do |i|
+      p i.slice(/[0-9]+/)&.to_i
+    end
+  choices:
+    - "0\n100"
+    - "nil\n100"
+    - "false\n100"
+    - '!文法エラーが発生する'
+    - '!実行時にエラーになる'
+  answer: [1]
+  verify: output
+  exp: |
+    `String#slice` に正規表現を渡すと、一致した部分文字列を返し、一致しなければ `nil` を返します。
+
+    `x&.foo` は `x` が `nil` のときメソッドを呼ばずに `nil` を返します（safe navigation 演算子、通称ぼっち演算子）。
+
+    - `"foo: abc"` … 数字がないので `nil`、`&.to_i` も呼ばれず `nil`
+    - `"bar: 100"` … `"100"` に一致して `to_i` で `100`
+
+    もし `&.` ではなく `.` だったら、`nil.to_i` は `0` なので1行目は `0` になります。
+
+- cat: 文法
+  official: 15
+  topic: キーワード引数
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    def foo(x: 1, y: 2, z: 3)
+      p [x, y, z]
+    end
+
+    foo(y: 4, z: 5)
+  choices: ['[1, 2, 3]', '[1, 4, 5]', '!文法エラーが発生する', '!実行時にエラーになる']
+  answer: [1]
+  verify: output
+  exp: |
+    デフォルト値付きのキーワード引数は、呼び出し時に省略するとデフォルト値が使われます。
+
+    `x` は省略されたので `1`、`y` と `z` は渡した `4` と `5` になります。キーワード引数は名前で対応するので、渡す順番は関係ありません。
+
+- cat: 文法
+  official: 16
+  topic: ハッシュとキーワード引数
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    def foo(x:, y:, z:)
+      p [x, y, z]
+    end
+
+    h = {x: 1, y: 2, z: 3}
+    __(1)__
+  result: '[1, 2, 3]'
+  choices: ['foo(*h)', 'foo(**h)', 'foo(&h)', 'foo(^h)']
+  answer: [1]
+  verify: blank
+  exp: |
+    ハッシュの前に `**` を付けると、その中身をキーワード引数として展開して渡せます。
+
+    - `*h` … 配列として展開するので `[:x, 1]` などの位置引数3つになり、`ArgumentError` です。
+    - `&h` … ブロックとして渡そうとしますが、Hash は Proc に変換できないので `TypeError` です。
+    - `^h` … そのような記法はなく文法エラーです。
+
+- cat: 組み込みライブラリ
+  official: 17
+  topic: 正規表現
+  q: '"Ruby" または "ruby" のいずれかの文字列のみにマッチする正規表現をすべて選択してください。(2つ選択)'
+  choices: ['`/\A[Rr]uby\z/`', '`/\ARuby|ruby\z/`', '`/\A[Rr][u][b][y]\z/`', '`/\AR|ruby\z/`']
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 're = /\A[Rr]uby\z/; exit(%w[Ruby ruby].all? { _1.match?(re) } && %w[Ruby123 xruby R RUBY].none? { _1.match?(re) })'
+    - 're = /\ARuby|ruby\z/; exit(%w[Ruby ruby].all? { _1.match?(re) } && %w[Ruby123 xruby R RUBY].none? { _1.match?(re) })'
+    - 're = /\A[Rr][u][b][y]\z/; exit(%w[Ruby ruby].all? { _1.match?(re) } && %w[Ruby123 xruby R RUBY].none? { _1.match?(re) })'
+    - 're = /\AR|ruby\z/; exit(%w[Ruby ruby].all? { _1.match?(re) } && %w[Ruby123 xruby R RUBY].none? { _1.match?(re) })'
+  exp: |
+    `[...]` は括弧内のどれか1文字に一致する文字クラスで、`[Rr]` は `R` か `r` です。`\A` は文字列の先頭、`\z` は末尾に一致します。
+
+    `|`（選択）は正規表現の中で最も優先順位が低いので、`/\ARuby|ruby\z/` は「`\ARuby`」または「`ruby\z`」という意味になります。そのため `"Ruby123"` や `"xruby"` にも一致してしまいます。`/\AR|ruby\z/` も同様で、`R` で始まる文字列なら何でも一致します。
+
+    選択を先頭・末尾の間に閉じ込めたいときは `/\A(?:Ruby|ruby)\z/` のようにグループ化します。
+
+- cat: 文法
+  official: 18
+  topic: 定数への再代入
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    MSG = 42
+    MSG += 5
+    p MSG
+  choices:
+    - '警告なしで `47` が表示される。'
+    - 'MSGは定数なのでエラーが発生する。'
+    - 'MSGは定数なので `42` が表示される。'
+    - 'MSGは定数なので警告が表示されるが、`47` が表示される。'
+  answer: [3]
+  verify: run
+  expect: {out: "47", stderr: "already initialized constant"}
+  exp: |
+    `MSG += 5` は `MSG = MSG + 5` と同じで、定数への再代入です。
+
+    Ruby では定数への再代入はエラーにならず、`warning: already initialized constant MSG` という警告を出したうえで値が変わります。
+
+- cat: 文法
+  official: 19
+  topic: 定数と破壊的メソッド
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    MSG = "hello"
+    MSG.upcase!
+    p MSG
+  choices:
+    - 'MSGは定数なのでエラーが発生する。'
+    - '警告なしで `HELLO` が表示される。'
+    - 'MSGは定数なので警告が表示されるが、`HELLO` が表示される。'
+    - 'MSGは定数なので `hello` が表示される。'
+  answer: [1]
+  verify: run
+  expect: {out: '"HELLO"', quiet: true}
+  exp: |
+    `upcase!` は定数への再代入ではなく、定数が指している文字列オブジェクトの中身を書き換えるだけです。そのため警告は出ず、`"HELLO"` と表示されます。
+
+    中身の変更も防ぎたいときは `MSG = "hello".freeze` のようにオブジェクトを凍結します（その場合 `upcase!` で `FrozenError`）。
+
+- cat: 文法
+  official: 20
+  topic: 変数の種類
+  q: 以下の説明のうち正しいものをすべて選択してください。(2つ選択)
+  choices:
+    - 'ローカル変数は小文字ではじまり、2文字以上の長さである。'
+    - 'グローバル変数は `$` ではじまる。'
+    - 'インスタンス変数は `*` ではじまる。'
+    - 'クラス変数は `$` ではじまる。'
+    - '定数は大文字ではじまる。'
+  answer: [1, 4]
+  verify: checks
+  checks:
+    - 'begin; eval("x = 1"); exit(false); rescue SyntaxError; exit(true); end'
+    - '$g = 1; exit(global_variables.include?(:$g))'
+    - 'class C; def initialize; @a = 1; end; end; exit(C.new.instance_variables.first.to_s.start_with?("*"))'
+    - 'class C; @@v = 1; end; exit(C.class_variables.first.to_s.start_with?("$"))'
+    - 'Foo = 1; exit(Object.const_defined?(:Foo))'
+  exp: |
+    変数の種類は先頭の文字で決まります。
+
+    - ローカル変数 … 英小文字か `_` で始める（`x` のような1文字でもよい）
+    - グローバル変数 … `$` で始める
+    - インスタンス変数 … `@` で始める
+    - クラス変数 … `@@` で始める
+    - 定数 … 英大文字で始める
+
+- cat: 組み込みライブラリ
+  official: 21
+  topic: 参照と破壊的メソッド
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    x = [1,2,3,4,5,6,7,8]
+    y = x
+    x.reject! { |e| e.even? }
+    p x
+    p y
+  choices:
+    - "[1, 3, 5, 7]\n[1, 2, 3, 4, 5, 6, 7, 8]"
+    - "[1, 2, 3, 4, 5, 6, 7, 8]\n[1, 2, 3, 4, 5, 6, 7, 8]"
+    - "[1, 3, 5, 7]\n[1, 3, 5, 7]"
+    - "[1, 3, 5, 7]\n[2, 4, 6, 8]"
+  answer: [2]
+  verify: output
+  exp: |
+    `y = x` は配列をコピーするのではなく、同じ配列オブジェクトを `y` からも参照させます。
+
+    `reject!` はレシーバ自身から偶数を取り除く破壊的メソッドなので、`x` からも `y` からも `[1, 3, 5, 7]` に見えます。別の配列にしたいときは `y = x.dup` とします。
+
+- cat: 組み込みライブラリ
+  official: 22
+  topic: Array（shift / pop / push）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    a = [ 2, 4, 6, 8, 10 ]
+    a.shift
+    a.pop
+    a.push(12)
+    p a
+  choices: ['[2, 4, 6, 8, 10, 12]', '[2, 4, 6, 8, 10]', '[4, 6, 8, 12]', '[4, 6, 8]']
+  answer: [2]
+  verify: output
+  exp: |
+    - `shift` … 先頭の要素を取り除いて返す（`2` が消える）
+    - `pop` … 末尾の要素を取り除いて返す（`10` が消える）
+    - `push` … 末尾に要素を追加する（`12` が入る）
+
+    結果は `[4, 6, 8, 12]` です。先頭に追加するのは `unshift` です。
+
+    **公式版からの修正**: 問題文（「実行結果として正しいものを…」）が選択肢のあとに置かれていたので、コードの前に移しました。
+
+- cat: 文法
+  official: 23
+  topic: 論理演算子と短絡評価
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    x = true
+    x __(1)__ exit(1)
+    puts("succeeded!")
+  result: succeeded!
+  choices: ['|', '||', '&', '&&']
+  answer: [1]
+  verify: blank
+  exp: |
+    `||` は左辺が真ならその時点で結果が決まるので、右辺 `exit(1)` を評価しません（短絡評価）。そのため次の行に進んで `succeeded!` が出力されます。
+
+    `&&` は左辺が真だと右辺も評価するので `exit(1)` が実行されて終了します。`|` と `&` は `true` / `false` に定義されたメソッドで、短絡評価をせず必ず右辺を評価するので、やはり終了します。
+
+- cat: 文法
+  official: 24
+  topic: ローカル変数の宣言
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    m = true
+    m or n = true
+    p n
+  choices: ['true', 'false', 'nil', '!文法エラーが発生する']
+  answer: [2]
+  verify: output
+  exp: |
+    `m` が真なので、`or` の右辺 `n = true` は実行されません。
+
+    ただしローカル変数は、代入式が**実行されたかどうかではなく、パース時に代入式が現れた時点で**定義されます。そのため `n` は存在し、値は `nil` です（`NameError` にはなりません）。
+
+- cat: 組み込みライブラリ
+  official: 25
+  topic: Array（部分配列）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    x = [ 9, 7, 5, 3, 1 ]
+    p __(1)__
+  result: '[7, 5, 3]'
+  choices: ['x[1, 3]', 'x[1..-1]', 'x[-3..-1]', 'x[-4..-2]']
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    - `x[開始, 長さ]` … `x[1, 3]` はインデックス1から3個で `[7, 5, 3]`
+    - `x[範囲]` … 範囲に含まれるインデックスの要素。負のインデックスは末尾から数えます（`-1` が最後）
+
+    各要素のインデックスは次のとおりです。
+
+    ```
+     x  [ 9,  7,  5,  3,  1]
+     i    0   1   2   3   4
+    -i   -5  -4  -3  -2  -1
+    ```
+
+    `x[-4..-2]` は `[7, 5, 3]`、`x[1..-1]` は `[7, 5, 3, 1]`、`x[-3..-1]` は `[5, 3, 1]` です。
+
+- cat: 組み込みライブラリ
+  official: 26
+  topic: Array（select / filter）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    ary = [ 1, 2, 3, 4, 5 ]
+    p ary.__(1)__ { |i| i.odd? }
+  result: '[1, 3, 5]'
+  choices: ['collect', 'select', 'map', 'filter', 'filter_map']
+  answer: [1, 3]
+  verify: blank
+  exp: |
+    `select` と、その別名の `filter` は、ブロックが真を返した要素だけを集めた配列を返します。
+
+    - `collect` / `map` … ブロックの戻り値の配列 `[true, false, true, false, true]`
+    - `filter_map` … ブロックの戻り値のうち真のものだけを集めるので `[true, true, true]`
+
+- cat: 組み込みライブラリ
+  official: 27
+  topic: String#to_i
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    puts "42A7".to_i
+  choices: ['42', '42A7', '17063', '!実行時にエラーになる']
+  answer: [0]
+  verify: output
+  exp: |
+    `to_i` は先頭から数字として読めるところまでを変換し、読めない文字が来たらそこで止めます。例外にはなりません。
+
+    10進数では `A` は数字ではないので `42` になります。`"42A7".to_i(16)` のように基数を渡すと16進数として読み、`17063` になります。
+
+- cat: 組み込みライブラリ
+  official: 28
+  topic: Hash（キーの存在確認）
+  q: '次のメソッドのうち `:c` がハッシュのキーとして存在するかどうかを「返さない」ものを選択してください。(1つ選択)'
+  code: |
+    h = {a: 2, b: 4, c: 6, d: 8, e: 10}
+  choices: ['`p h.has_key?(:c)`', '`p h.contain?(:c)`', '`p h.include?(:c)`', '`p h.key?(:c)`', '`p h.member?(:c)`']
+  answer: [1]
+  verify: checks
+  checks:
+    - 'begin; p h.has_key?(:c); exit(false); rescue NoMethodError; exit(true); end'
+    - 'begin; p h.contain?(:c); exit(false); rescue NoMethodError; exit(true); end'
+    - 'begin; p h.include?(:c); exit(false); rescue NoMethodError; exit(true); end'
+    - 'begin; p h.key?(:c); exit(false); rescue NoMethodError; exit(true); end'
+    - 'begin; p h.member?(:c); exit(false); rescue NoMethodError; exit(true); end'
+  exp: |
+    `has_key?`・`include?`・`key?`・`member?` はどれも同じ働きで、キーがあれば `true` を返します。
+
+    Hash に `contain?` というメソッドはないので `NoMethodError` になります。値の存在を調べるのは `value?` / `has_value?` です。
+
+- cat: 組み込みライブラリ
+  official: 29
+  topic: Array（要素の削除）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    a = [120, 40, 20, 80, 160, 60, 180]
+    a.__(1)__
+    p a
+  result: '[120, 80, 160, 180]'
+  choices:
+    - 'reject! {|i| i < 80}'
+    - 'slice {|i| i < 80 }'
+    - 'slice! {|i| i < 80}'
+    - 'delete_if! {|i| i < 80}'
+    - 'delete_if {|i| i < 80}'
+    - 'reject {|i| i < 80}'
+  answer: [0, 4]
+  verify: blank
+  exp: |
+    `a` 自身を変更する必要があるので、破壊的に要素を取り除く `reject!` と `delete_if` が正解です。
+
+    - `reject` … 新しい配列を返すだけで `a` は変わりません。
+    - `delete_if!` … そのような名前のメソッドはありません（`delete_if` は名前に `!` がなくても破壊的です）。
+    - `slice` / `slice!` … インデックスや範囲を引数に取るメソッドで、ブロックで絞り込むことはできません。引数がないので `ArgumentError` です。
+
+    **公式版からの修正**: 問題文の先頭に余分な `"` が入っていました。
+
+- cat: 組み込みライブラリ
+  official: 30
+  topic: Array（和集合）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    p ["apple", "banana"] __(1)__ ["banana", "carrot"]
+  result: '["apple", "banana", "carrot"]'
+  choices: ['.concat', '&', '|', '||']
+  answer: [2]
+  verify: blank
+  exp: |
+    - `|` … 和集合。重複を取り除いて連結し、`["apple", "banana", "carrot"]`
+    - `&` … 積集合。両方にある要素だけで `["banana"]`
+    - `.concat` … 重複を残したまま連結するので `"banana"` が2つになります。
+    - `||` … 論理和。左辺が真なので左辺の配列そのものになります。
+
+- cat: 文法
+  official: 31
+  topic: '%記法'
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    p %i(x1 x2 x3)
+  choices: ['"x1 x2 x3"', '[1, 2, 3]', '["x1", "x2", "x3"]', '[:x1, :x2, :x3]']
+  answer: [3]
+  verify: output
+  exp: |
+    `%i(...)` は空白で区切った語をシンボルの配列にします。
+
+    文字列の配列にしたいときは `%w(...)` です。大文字の `%I` / `%W` は式展開もできます。
+
+- cat: オブジェクト指向
+  official: 32
+  topic: 例外クラスと rescue の順番
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class SomeError < StandardError; end
+    class SomeOtherError < SomeError; end
+
+    def meth1
+      raise SomeOtherError.new("error")
+    end
+
+    begin
+      meth1
+    rescue SomeError
+      print "SomeError"
+    rescue SomeOtherError
+      print "SomeOtherError"
+    end
+  choices: ['!文法エラーが発生する', 'SomeError', 'SomeErrorSomeOtherError', 'SomeOtherError']
+  answer: [1]
+  verify: output
+  exp: |
+    `rescue` 節は上から順に調べられ、例外が指定したクラス（またはその**サブクラス**）のインスタンスなら、その節だけが実行されます。
+
+    `SomeOtherError` は `SomeError` のサブクラスなので、最初の `rescue SomeError` で捕捉されて `SomeError` と出力されます。2つ目の節には到達しません。特定的な例外ほど先に書くのが定石です。
+
+    **公式版からの修正**: 選択肢「A syntax error」が英語のままだったので日本語にしました。
+
+- cat: オブジェクト指向
+  official: 33
+  topic: ensure と exit
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    begin
+      ans = 100/0
+      puts ans
+    rescue ZeroDivisionError
+      puts "Error: ZeroDivisionError"
+      exit 1
+    ensure
+      puts "DONE!"
+    end
+  choices:
+    - "0\nDONE!"
+    - 'Error: ZeroDivisionError'
+    - "Error: ZeroDivisionError\nDONE!"
+    - "Error: ZeroDivisionError\n0"
+  answer: [2]
+  cm: true
+  verify: run
+  expect: {out: "Error: ZeroDivisionError\nDONE!", status: 1}
+  exp: |
+    整数の `100/0` は `ZeroDivisionError` になり、`puts ans` は実行されずに `rescue` 節へ移ります。
+
+    `exit 1` はプログラムを終了させますが、内部的には `SystemExit` という例外を発生させる仕組みなので、終了する前に `ensure` 節が実行されて `DONE!` が出力されます。
+
+- cat: オブジェクト指向
+  official: 34
+  topic: スーパークラス
+  q: クラスのスーパークラスを明示的に指定しなかった場合の説明として正しいものを選択してください。(1つ選択)
+  choices:
+    - '例外 `UndefinedParentClassError` が発生する'
+    - '文法エラーが発生する'
+    - '`Module` クラスがスーパークラスになる'
+    - 'スーパークラスのないクラスが作成される'
+    - '`Object` クラスがスーパークラスになる'
+  answer: [4]
+  verify: checks
+  checks:
+    - 'exit(defined?(UndefinedParentClassError) ? true : false)'
+    - 'begin; eval("class Foo; end"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'class Foo; end; exit(Foo.superclass == Module)'
+    - 'class Foo; end; exit(Foo.superclass.nil?)'
+    - 'class Foo; end; exit(Foo.superclass == Object)'
+  exp: |
+    `class Foo; end` のようにスーパークラスを書かないと、`Object` を継承したクラスになります（`Foo.superclass #=> Object`）。
+
+    `Object` を継承しないクラスを作りたいときは、`class Foo < BasicObject` のように `BasicObject` を明示します。スーパークラスを持たないのは `BasicObject` だけです。
+
+- cat: オブジェクト指向
+  official: 35
+  topic: オープンクラス
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class Object
+      def moo
+        puts "MOO!"
+      end
+    end
+
+    "Cow".moo
+  choices: ['!何も出力されない', '!実行時にエラーになる', 'MOO!', 'nil']
+  answer: [2]
+  verify: output
+  exp: |
+    Ruby のクラスは定義済みのものでもあとから開き直してメソッドを追加できます（オープンクラス）。組み込みの `Object` も例外ではありません。
+
+    String を含むほぼすべてのクラスは `Object` を継承しているので、`"Cow".moo` も呼び出せて `MOO!` が出力されます。
+
+- cat: オブジェクト指向
+  official: 36
+  topic: initialize
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    class Shouter
+      def __(1)__(message)
+        @message = message
+      end
+
+      def greet
+        puts @message.upcase
+      end
+    end
+
+    g = Shouter.new("Hello, world!")
+    g.greet
+  result: HELLO, WORLD!
+  choices: ['Shouter', 'new', 'initialize', '__init__']
+  answer: [2]
+  verify: blank
+  exp: |
+    `クラス名.new` でインスタンスを作ると、そのインスタンスの `initialize` メソッドが `new` に渡した引数で呼ばれます。
+
+    Ruby ではクラス名と同じ名前のメソッドや `__init__` はコンストラクタになりません。`new` をインスタンスメソッドとして定義しても、`Shouter.new` で呼ばれるのはクラスメソッドの `new` です。
+
+- cat: オブジェクト指向
+  official: 37
+  topic: インスタンスの生成
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    class Shouter
+      def initialize(message)
+        @message = message
+      end
+
+      def greet
+        puts @message.upcase
+      end
+    end
+
+    g = __(1)__("Hello, world!")
+    g.greet
+  result: HELLO, WORLD!
+  choices: ['Shouter', '#Shouter', 'new Shouter', 'Shouter.new']
+  answer: [3]
+  verify: blank
+  exp: |
+    インスタンスは `クラス名.new(引数)` で作ります。`new` は Class のメソッドです。
+
+    Java などの `new Shouter(...)` という書き方は Ruby にはなく、`Shouter(...)` は `Shouter` という名前のメソッド呼び出しとみなされて `NoMethodError` になります。
+
+- cat: オブジェクト指向
+  official: 38
+  topic: super
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class Foo
+      attr_reader :var
+      def initialize
+        @var = "apple"
+      end
+    end
+
+    class Bar < Foo
+      def initialize
+        @var = "banana"
+        super
+      end
+    end
+
+    bar = Bar.new
+    puts bar.var
+  choices: ['apple', 'banana', '!何も出力されない', '!実行時にエラーになる']
+  answer: [0]
+  verify: output
+  exp: |
+    `super` はスーパークラスの同じ名前のメソッド（ここでは `Foo#initialize`）を呼び出します。
+
+    `Bar#initialize` で `@var = "banana"` としたあとに `super` で `Foo#initialize` が呼ばれ、同じインスタンスの `@var` が `"apple"` で上書きされます。そのため `apple` が出力されます。
+
+- cat: 組み込みライブラリ
+  official: 39
+  topic: String（delete_prefix）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    puts "$foo$".__(1)__("$")
+  result: foo$
+  choices: ['sub', 'chop', 'delete', 'delete_prefix']
+  answer: [3]
+  verify: blank
+  exp: |
+    - `delete_prefix("$")` … 先頭の `"$"` だけを取り除くので `foo$`
+    - `delete("$")` … 引数に含まれる文字を**すべて**取り除くので `foo`
+    - `sub` … 置換後の文字列（またはブロック）も必要なので、引数1つでは `ArgumentError`
+    - `chop` … 引数を取らない（末尾の1文字を取り除く）ので `ArgumentError`
+
+    末尾だけを取り除くのは `delete_suffix` です。
+
+- cat: 組み込みライブラリ
+  official: 40
+  topic: Range#to_a
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    r = "a".."e"
+    p r.__(1)__
+  result: '["a", "b", "c", "d", "e"]'
+  choices: ['array', 'to_ary', 'to_a', 'to_array']
+  answer: [2]
+  verify: blank
+  exp: |
+    範囲を配列に変換するのは `to_a` です（Enumerable のメソッド）。
+
+    `to_ary` は「配列として暗黙に扱える」オブジェクトが持つメソッドで、Range には定義されていません。`array` や `to_array` というメソッドもありません。
+
+- cat: 組み込みライブラリ
+  official: 41
+  topic: Enumerable#find
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    p [0,1,2,3,4,5].find {|x| x < 3}
+  choices: ['[0, 1, 2]', '0', '[0, 1, 2, 3]', 'true']
+  answer: [1]
+  verify: output
+  exp: |
+    `find`（別名 `detect`）は、ブロックが真になった**最初の要素**を1つだけ返します。見つからなければ `nil` です。
+
+    条件に合う要素をすべて集めたい場合は `select`（`filter`）を使い、`[0, 1, 2]` になります。
+
+- cat: 組み込みライブラリ
+  official: 42
+  topic: 降順ソート
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    p [1,16,8,4,2].__(1)__
+  result: '[16, 8, 4, 2, 1]'
+  choices: ['sort_by { |x| -x }', 'sort_reverse', 'sort.reverse', 'reverse.sort']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    - `sort_by { |x| -x }` … 符号を反転した値で昇順に並べるので、元の値では降順になります。
+    - `sort.reverse` … 昇順に並べてから逆順にします。
+    - `reverse.sort` … 逆順にしてから昇順に並べるので、結果は昇順です。
+    - `sort_reverse` … そのようなメソッドはありません。
+
+- cat: 組み込みライブラリ
+  official: 43
+  topic: sort のブロック
+  q: '配列を降順にソートするコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    ary = [2,4,8,1,16]
+    p ary.__(1)__
+  result: '[16, 8, 4, 2, 1]'
+  choices: ['sort { |i,j| -i <= -j }', 'sort { |i,j| -i <=> -j }', 'sort { |i,j| i >= j }', 'sort{ |i,j| i <=> j }']
+  answer: [1]
+  verify: blank
+  exp: |
+    `sort` のブロックは2つの要素を受け取り、前に置くべきなら負、同じなら `0`、後ろに置くべきなら正の整数を返します。`<=>` はちょうどその値（`-1` / `0` / `1`）を返す演算子です。
+
+    `-i <=> -j` は符号を反転して比べるので、大きい値ほど前に来る降順になります（`j <=> i` と書いても同じ）。`i <=> j` は昇順です。
+
+    `<=` や `>=` は `true` / `false` を返すため、`sort` が比較結果として扱えずエラーになります。
+
+- cat: 組み込みライブラリ
+  official: 44
+  topic: IO#seek
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    File.write("test", "hellorubyworld\n")
+    File.open("test") do |file|
+      file.seek(5)
+      print file.gets
+    end
+  choices: ['hello', 'rubyworld', 'hellor', 'rubyw', 'orubyworld']
+  answer: [1]
+  verify: output
+  exp: |
+    `seek(5)` は読み書きの位置を先頭から5バイト目に移します。位置は0から数えるので、`"hello"` の5文字を飛ばした `r` の位置になります。
+
+    `gets` はそこから行末までを読むので `rubyworld` が出力されます。
+
+- cat: 組み込みライブラリ
+  official: 45
+  topic: ファイルのオープンモード（省略時）
+  q: '以下のコードでは `open` メソッドの第2引数を省略してファイルを開いています。このケースで暗黙的に第2引数として指定されるものを選択してください。(1つ選択)'
+  code: |
+    file = open("sample.txt")
+  setup: |
+    # 各モードと、モード省略時の振る舞いを比べる
+    def probe(*mode)
+      File.delete("p.txt") if File.exist?("p.txt")
+      missing = begin; open("p.txt", *mode).close; true; rescue Errno::ENOENT; false; end
+      File.write("p.txt", "abc")
+      f = open("p.txt", *mode)
+      readable = begin; f.read; true; rescue IOError; false; end
+      writable = begin; f.write("Z"); f.flush; true; rescue IOError; false; end
+      f.close
+      [missing, readable, writable, File.read("p.txt")]
+    end
+  choices: ['`r`', '`r+`', '`a`', '`a+`', '`w`', '`w+`']
+  answer: [0]
+  verify: checks
+  checks:
+    - 'exit(probe == probe("r"))'
+    - 'exit(probe == probe("r+"))'
+    - 'exit(probe == probe("a"))'
+    - 'exit(probe == probe("a+"))'
+    - 'exit(probe == probe("w"))'
+    - 'exit(probe == probe("w+"))'
+  exp: |
+    モードを省略すると `"r"`（読み込み専用）で開かれます。ファイルがなければ `Errno::ENOENT` になり、書き込もうとすると `IOError` です。
+
+    **公式版からの修正**: 問題文に選択する数（1つ選択）が書かれていなかったので補いました。
+
+- cat: 組み込みライブラリ
+  official: 46
+  topic: ファイルのオープンモード（w / w+）
+  q: 'test_one.txtの内容をtest_two.txtにコピーするコードがあります。test_two.txtがすでに存在する場合、このコードは最初にファイルサイズを0にし、先頭から内容を上書きするものとします。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    open("test_one.txt") {|source|
+      open("test_two.txt", "__(1)__") {|dest|
+        dest.write(source.read)
+      }
+    }
+  setup: |
+    def copy(mode)
+      File.write("test_one.txt", "new")
+      File.write("test_two.txt", "old old old")
+      open("test_one.txt") {|source|
+        open("test_two.txt", mode) {|dest|
+          dest.write(source.read)
+        }
+      }
+      File.read("test_two.txt") == "new"
+    end
+  choices: ['`r+`', '`a`', '`a+`', '`w`', '`w+`']
+  answer: [3, 4]
+  verify: checks
+  checks:
+    - 'exit(copy("r+"))'
+    - 'exit(copy("a"))'
+    - 'exit(copy("a+"))'
+    - 'exit(copy("w"))'
+    - 'exit(copy("w+"))'
+  exp: |
+    主なオープンモードは次のとおりです。
+
+    - `r` … 読み込み専用（省略時のモード）。ファイルがなければエラー
+    - `r+` … 読み書き。先頭から書き込むが、切り詰めはしない
+    - `w` … 書き込み専用。既存ファイルを0バイトに切り詰める（なければ作成）
+    - `w+` … 読み書き。既存ファイルを0バイトに切り詰める（なければ作成）
+    - `a` … 書き込み専用。末尾に追記（なければ作成）
+    - `a+` … 読み書き。書き込みは末尾に追記（なければ作成）
+
+    「サイズを0にしてから先頭から書く」のは `w` と `w+` です。`r+` だと古い内容の後半が残り、`new old old` のようになります。
+
+- cat: 組み込みライブラリ
+  official: 47
+  topic: Dir のクラスメソッド
+  q: '`Dir` クラスに存在しないクラスメソッドを選択してください。(2つ選択)'
+  choices: ['`Dir.pwd`', '`Dir.rename`', '`Dir.basename`', '`Dir.chdir`', '`Dir.delete`']
+  answer: [1, 2]
+  verify: checks
+  checks:
+    - 'exit(!Dir.respond_to?(:pwd))'
+    - 'exit(!Dir.respond_to?(:rename))'
+    - 'exit(!Dir.respond_to?(:basename))'
+    - 'exit(!Dir.respond_to?(:chdir))'
+    - 'exit(!Dir.respond_to?(:delete))'
+  exp: |
+    - `Dir.pwd` … カレントディレクトリのパスを返す（別名 `getwd`）
+    - `Dir.chdir` … カレントディレクトリを変更する
+    - `Dir.delete` … 空のディレクトリを削除する（別名 `rmdir` / `unlink`）
+
+    名前の変更は `File.rename`（ディレクトリにも使えます）、パスの末尾の名前を取り出すのは `File.basename` で、どちらも Dir ではなく File のメソッドです。
+
+- cat: 組み込みライブラリ
+  official: 48
+  topic: String（部分文字列）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    p "hello ruby world"[6,4]
+  choices: ['"hello "', '"ruby"', '" world"', '!実行時にエラーになる']
+  answer: [1]
+  verify: output
+  exp: |
+    `文字列[開始, 長さ]` は、開始位置（0から数える）から指定した長さの部分文字列を返します。
+
+    位置6は `r` なので、そこから4文字の `"ruby"` になります。位置と長さはバイトではなく文字単位です。
+
+- cat: 組み込みライブラリ
+  official: 49
+  topic: String（部分文字列の置き換え）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    str = "bat"
+    str[1,1] = "o"
+    p str
+  choices: ['"boo"', '"bot"', '"oat"', '"o"']
+  answer: [1]
+  verify: output
+  exp: |
+    `str[開始, 長さ] = 文字列` は、その範囲を右辺の文字列で置き換えます（文字列自体が変わります）。
+
+    位置1から1文字の `a` が `o` に置き換わり、`"bot"` になります。置き換える文字列の長さは元の範囲と違っても構いません（`"boat"` の `[1,2]` に `"uil"` を入れると `"built"`）。
+
+- cat: 組み込みライブラリ
+  official: 50
+  topic: Integer と String の演算
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    puts 5 * "hi"
+  choices: ['`"hihihihihi"`', '実行時にエラーになる', '`"5hi"`', '`"5*hi"`']
+  answer: [1]
+  verify: run
+  expect: {error: TypeError}
+  exp: |
+    `5 * "hi"` は Integer の `*` メソッドに文字列を渡すことになり、文字列は数値に変換できないので `TypeError`（String can't be coerced into Integer）になります。
+
+    順番を逆にした `"hi" * 5` なら String の `*` が呼ばれ、`hihihihihi` になります。

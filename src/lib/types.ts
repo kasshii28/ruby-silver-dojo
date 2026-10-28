@@ -20,6 +20,8 @@ export interface Question {
   /** Show choices as monospaced code. */
   cm: boolean;
   exp: string;
+  /** The question number in the official prep test (q_official.yml). Unset for this site's own questions. */
+  official?: number;
 }
 
 /** An answer, with `sel` holding original choice indexes. */

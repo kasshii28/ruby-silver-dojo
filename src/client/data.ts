@@ -8,6 +8,11 @@ function load(): Question[] {
 }
 
 export const QUESTIONS = load();
+/** This site's own questions. The random exams draw only from these. */
+export const ORIGINAL = QUESTIONS.filter((q) => q.official === undefined);
+/** The official prep test, in its own numbering. */
+export const OFFICIAL = QUESTIONS.filter((q) => q.official !== undefined).sort((a, b) => (a.official ?? 0) - (b.official ?? 0));
+export const OFFICIAL_SOURCE = 'https://github.com/ruby-association/prep-test/blob/version3/silver_ja.md';
 export const CATS = CATEGORIES;
 export const KEYS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 export const PASS = 75;

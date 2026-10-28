@@ -11,7 +11,7 @@ export function fmtDate(t: number): string {
 
 export function questionHead(q: Question, label: string): string {
   const multi = q.answer.length > 1;
-  return `<div class="qhead"><span class="qno">${label}</span><span class="tag id">No.${q.id}</span><span class="tag">${esc(q.cat)}</span><span class="tag">${esc(q.topic)}</span>${multi ? `<span class="tag multi">${q.answer.length}つ選択</span>` : ''}</div>
+  return `<div class="qhead"><span class="qno">${label}</span><span class="tag id">No.${q.id}</span>${q.official ? `<span class="tag official">公式 Q${q.official}</span>` : ''}<span class="tag">${esc(q.cat)}</span><span class="tag">${esc(q.topic)}</span>${multi ? `<span class="tag multi">${q.answer.length}つ選択</span>` : ''}</div>
     <p class="qtext">${inline(q.q)}</p>${q.code ? codeBlock(q.code) : ''}${q.result != null ? `<div class="result-box"><span class="label">〔実行結果〕</span><pre>${esc(q.result)}</pre></div>` : ''}`;
 }
 
