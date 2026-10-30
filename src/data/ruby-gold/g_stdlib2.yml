@@ -1,0 +1,543 @@
+# 標準添付ライブラリ（追加分）
+- cat: 標準添付ライブラリ
+  topic: JSON.pretty_generate
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "json"
+    puts JSON.pretty_generate({a: [1, 2], b: nil})
+  choices: ["{\n  \"a\": [\n    1,\n    2\n  ],\n  \"b\": null\n}", "{\"a\":[1,2],\"b\":null}", "{\n  \"a\": [1, 2],\n  \"b\": null\n}", "{\n  a: [\n    1,\n    2\n  ],\n  b: nil\n}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `JSON.pretty_generate` は、改行とインデント（空白2つ）を入れた読みやすい JSON を作ります。配列の要素も1つずつ改行されます。
+
+    `JSON.generate`（`to_json`）は空白なしの1行の JSON です。
+
+- cat: 標準添付ライブラリ
+  topic: JSON::ParserError
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "json"
+    ["{\"a\": 1}", "{a: 1}", "[1, 2,]"].each do |s|
+      p JSON.parse(s)
+    rescue JSON::ParserError
+      p :error
+    end
+  choices: ["{\"a\"=>1}\n:error\n:error", "{\"a\"=>1}\n{\"a\"=>1}\n[1, 2]", "{:a=>1}\n:error\n:error", "{\"a\"=>1}\n:error\n[1, 2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    JSON は Ruby のハッシュリテラルよりも書式が厳密です。キーは必ずダブルクォートで囲み、末尾のカンマも許されません。正しくない JSON を `JSON.parse` すると `JSON::ParserError` が発生します。
+
+    `do ... end` ブロックの中には、`begin` を書かずに直接 `rescue` を書けます（Ruby 2.6 から）。
+
+- cat: 標準添付ライブラリ
+  topic: to_json と独自クラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "json"
+    class Point
+      def initialize(x, y) = (@x, @y = x, y)
+      def to_h = {x: @x, y: @y}
+      def to_json(*args) = to_h.to_json(*args)
+    end
+    puts [Point.new(1, 2)].to_json
+    puts JSON.generate({p: Point.new(3, 4)})
+  choices: ["[{\"x\":1,\"y\":2}]\n{\"p\":{\"x\":3,\"y\":4}}", "[\"#<Point>\"]\n{\"p\":\"#<Point>\"}", "[{\"x\":1,\"y\":2}]\n{\"p\":\"#<Point>\"}", '!`JSON::GeneratorError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `to_json` は、配列やハッシュの中の要素に対してもそれぞれの `to_json` を呼びます。自作クラスで `to_json(*args)` を定義すると、入れ子になっていても独自の形式で JSON にできます。
+
+    定義しない場合は `to_s` の結果（`"#<Point:0x...>"`）が文字列として出力されます。`*args` は内部で状態オブジェクトが渡されるので、受け取って引き継ぐのが作法です。
+
+- cat: 標準添付ライブラリ
+  topic: Set の比較と判定
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "set"
+    a = Set[1, 2]
+    p a == Set[2, 1]
+    p a <= Set[1, 2, 3], a < a
+    p a.disjoint?(Set[3]), a.intersect?(Set[2, 9])
+    p Set[3, 1, 2].to_a
+  choices: ["true\ntrue\nfalse\ntrue\ntrue\n[3, 1, 2]", "true\ntrue\nfalse\ntrue\ntrue\n[1, 2, 3]", "false\ntrue\nfalse\ntrue\ntrue\n[3, 1, 2]", "true\ntrue\ntrue\ntrue\nfalse\n[3, 1, 2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Set` の `==` は順序に関係なく、要素が同じなら `true` です。
+    - `<=`（`subset?`）は部分集合、`<`（`proper_subset?`）は真部分集合です。同じ集合どうしの `<` は `false` です。
+    - `disjoint?` は共通の要素がないか、`intersect?` は共通の要素があるかを調べます。
+    - `Set` は内部でハッシュを使っていて、**追加した順番**を保ちます（ソートはされません）。
+
+- cat: 標準添付ライブラリ
+  topic: Set と eql?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "set"
+    s = Set.new([1, 1.0, "a", "a", [1], [1]])
+    p s.size
+    p s.include?(1.0), s.include?(2 - 1)
+    s << :b
+    p s.length, s.frozen?
+  choices: ["4\ntrue\ntrue\n5\nfalse", "3\ntrue\ntrue\n4\nfalse", "6\ntrue\ntrue\n7\nfalse", "4\nfalse\ntrue\n5\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Set` の重複の判定は、ハッシュのキーと同じく `hash` と `eql?` を使います。
+
+    - `1` と `1.0` は `eql?` で別物なので、両方入ります。
+    - 中身が同じ文字列や配列は同じ要素として扱われます。
+
+    結果は `1`、`1.0`、`"a"`、`[1]` の4つです。
+
+- cat: 標準添付ライブラリ
+  topic: Date の範囲と曜日
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "date"
+    d = Date.new(2024, 2, 28)
+    puts d.next_day(2)
+    p (d..d + 3).count
+    p d.strftime("%j %a")
+    p Date.new(2024, 1, 1).cwday, Date.new(2024, 1, 7).wday
+  choices: ["2024-03-01\n4\n\"059 Wed\"\n1\n0", "2024-03-01\n3\n\"059 Wed\"\n1\n0", "2024-02-30\n4\n\"059 Wed\"\n1\n7", "2024-03-01\n4\n\"058 Wed\"\n0\n0"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `next_day(n)` は n 日後です。2024年はうるう年なので、2月28日の2日後は3月1日です。
+    - `Date` の範囲は日ごとに列挙できます。`d..d + 3` は4日分です。
+    - `%j` は年内の通し日数（3桁）、`%a` は曜日の略称です。
+    - `cwday` は月曜を `1`、日曜を `7` とする曜日番号、`wday` は日曜を `0` とする番号です。2024年1月1日は月曜日です。
+
+- cat: 標準添付ライブラリ
+  topic: Date の月の移動
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "date"
+    puts Date.new(2024, 1, 31).next_month
+    puts Date.new(2024, 3, 31).prev_month
+    puts Date.new(2024, 2, 29).next_year
+    puts Date.new(2024, 1, 31) + 30
+  choices: ["2024-02-29\n2024-02-29\n2025-02-28\n2024-03-01", "2024-03-02\n2024-03-02\n2025-03-01\n2024-03-01", "2024-02-29\n2024-02-29\n2025-03-01\n2024-03-02", "2024-02-28\n2024-02-28\n2025-02-28\n2024-03-01"]
+  answer: [0]
+  verify: output
+  exp: |
+    `next_month`・`prev_month`・`next_year`（と `>>`・`<<`）は月単位で移動し、移動先にその日がなければ**その月の末日**にします。2024年はうるう年なので2月29日、2025年は2月28日です。
+
+    `+ n` は日単位なので、1月31日の30日後は3月1日です。
+
+- cat: 標準添付ライブラリ
+  topic: DateTime と Date の比較
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "date"
+    dt = DateTime.new(2024, 1, 1, 12, 30)
+    p dt.hour, dt.minute
+    p dt.to_date.to_s
+    p Date.new(2024, 1, 1) < dt
+    p dt.class.superclass
+  choices: ["12\n30\n\"2024-01-01\"\ntrue\nDate", "12\n30\n\"2024-01-01T12:30:00+00:00\"\ntrue\nDate", "12\n30\n\"2024-01-01\"\nfalse\nObject", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `DateTime` は `Date` のサブクラスで、日付に加えて時・分・秒を持ちます（現在は `Time` の利用が推奨されています）。`hour`・`minute`（`min`）で取り出せ、`to_date` で日付だけにできます。
+
+    `Date` と `DateTime` は比較でき、同じ日の0時の `Date` は12時30分の `DateTime` より前です。
+
+- cat: 標準添付ライブラリ
+  topic: Time.at と UTC
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    t = Time.at(0).utc
+    puts t
+    p t.year, t.utc?
+    p (t + 0.5).usec
+    p t.strftime("%Y/%-m/%-d %H:%M:%S.%L")
+    p Time.utc(2024, 1, 1).to_i
+  choices: ["1970-01-01 00:00:00 UTC\n1970\ntrue\n500000\n\"1970/1/1 00:00:00.000\"\n1704067200", "1970-01-01 09:00:00 +0900\n1970\nfalse\n500000\n\"1970/1/1 09:00:00.000\"\n1704067200", "1970-01-01 00:00:00 UTC\n1970\ntrue\n0\n\"1970/01/01 00:00:00.000\"\n1704067200", "1970-01-01 00:00:00 UTC\n1970\ntrue\n500\n\"1970/1/1 00:00:00.000\"\n1704067200"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Time.at(秒)` は UNIX 時間（1970年1月1日 0時 UTC からの秒数）から `Time` を作ります。`utc` で UTC の表現にします。`to_i` はその逆です。
+    - `Time` は小数の秒も扱え、`usec` はマイクロ秒（0.5秒 = 500000）です。
+    - `strftime` の `%-m` は月をゼロ埋めせずに、`%L` はミリ秒を3桁で表します。
+
+- cat: 標準添付ライブラリ
+  topic: YAML の読み書き
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "yaml"
+    print YAML.dump({"name" => "Ann", "tags" => ["a", "b"]})
+    data = YAML.load("port: 80\nhosts: [x, y]\ndebug: yes\n")
+    p data
+  choices: ["---\nname: Ann\ntags:\n- a\n- b\n{\"port\"=>80, \"hosts\"=>[\"x\", \"y\"], \"debug\"=>true}", "---\nname: Ann\ntags: [a, b]\n{\"port\"=>80, \"hosts\"=>[\"x\", \"y\"], \"debug\"=>\"yes\"}", "name: Ann\ntags:\n- a\n- b\n{:port=>80, :hosts=>[\"x\", \"y\"], :debug=>true}", "---\nname: Ann\ntags:\n- a\n- b\n{\"port\"=>\"80\", \"hosts\"=>\"[x, y]\", \"debug\"=>\"yes\"}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `YAML.dump` は先頭に `---` を付けた YAML 文字列を作ります。配列は既定で `- ` の箇条書きの形で出力されます。
+
+    `YAML.load` は YAML を Ruby のオブジェクトにします。数字は整数に、`[x, y]` は配列に、`yes` / `no` / `true` / `false` は真偽値になります（YAML 1.1 の仕様）。キーは文字列です。
+
+- cat: 標準添付ライブラリ
+  topic: YAML.safe_load
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "yaml"
+    p YAML.safe_load("a: 1")
+    p YAML.safe_load("a: :sym", permitted_classes: [Symbol])
+    begin
+      YAML.safe_load("t: 2024-01-01")
+    rescue Psych::DisallowedClass => e
+      p e.class
+    end
+  choices: ["{\"a\"=>1}\n{\"a\"=>:sym}\nPsych::DisallowedClass", "{\"a\"=>1}\n{\"a\"=>\":sym\"}\nPsych::DisallowedClass", "{:a=>1}\n{:a=>:sym}\nPsych::DisallowedClass", "{\"a\"=>1}\n{\"a\"=>:sym}\n{\"t\"=>2024-01-01}"]
+  answer: [0]
+  verify: output
+  exp: |
+    `YAML.safe_load` は、文字列・数値・配列・ハッシュなどの基本的な型だけを読み込みます。それ以外のクラスのオブジェクトが必要になると `Psych::DisallowedClass` が発生します。日付も `Date` クラスになるので、そのままでは読み込めません。
+
+    `permitted_classes:` で許可するクラスを追加できます。信頼できない YAML を読み込むときは `safe_load` を使います（Psych 4 以降は `YAML.load` も安全側の動きになっています）。
+
+- cat: 標準添付ライブラリ
+  topic: Pathname
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "pathname"
+    pa = Pathname("/usr/local/lib/ruby.rb")
+    p pa.basename.to_s, pa.extname, pa.dirname.to_s
+    p (Pathname("a") + "b" + "../c").to_s
+    p Pathname("/a").join("b", "c").to_s
+    p pa.absolute?
+  choices: ["\"ruby.rb\"\n\".rb\"\n\"/usr/local/lib\"\n\"a/c\"\n\"/a/b/c\"\ntrue", "\"ruby\"\n\"rb\"\n\"/usr/local/lib\"\n\"a/b/../c\"\n\"/a/b/c\"\ntrue", "\"ruby.rb\"\n\".rb\"\n\"/usr/local/lib/\"\n\"a/c\"\n\"/a/b/c\"\ntrue", "\"ruby.rb\"\n\".rb\"\n\"/usr/local/lib\"\n\"a/c\"\n\"b/c\"\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Pathname` はファイルパスをオブジェクトとして扱うクラスです。
+
+    - `basename`・`extname`・`dirname` でパスの部分を取り出せます（`extname` はドット付き）。
+    - `+` や `join` でパスをつなげます。`+` は `..` を整理します（ファイルシステムは見ずに文字列の上で解決）。
+    - `absolute?` は `/` から始まる絶対パスかどうかです。
+
+- cat: 標準添付ライブラリ
+  topic: FileUtils
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "fileutils"
+    FileUtils.mkdir_p("tmp/a/b")
+    FileUtils.touch("tmp/a/b/x.txt")
+    FileUtils.cp("tmp/a/b/x.txt", "tmp/y.txt")
+    p Dir.glob("tmp/**/*.txt").sort
+    FileUtils.rm_rf("tmp")
+    p Dir.exist?("tmp")
+  choices: ["[\"tmp/a/b/x.txt\", \"tmp/y.txt\"]\nfalse", "[\"tmp/y.txt\"]\nfalse", "[\"tmp/a/b/x.txt\", \"tmp/y.txt\"]\ntrue", '!`Errno::ENOENT` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `FileUtils` はシェルのコマンドに近い名前でファイル操作を行うライブラリです。
+
+    - `mkdir_p` … 途中のディレクトリもまとめて作ります（`mkdir -p`）。
+    - `touch` … 空のファイルを作るか、更新日時を変えます。
+    - `cp`・`mv`・`rm`・`rm_rf`（中身ごと強制的に削除）など。
+
+    `Dir.glob` の `**` はサブディレクトリを再帰的にたどります。
+
+- cat: 標準添付ライブラリ
+  topic: SimpleDelegator
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "delegate"
+    class Doubled < SimpleDelegator
+      def size = super * 2
+    end
+    d = Doubled.new([1, 2, 3])
+    p d.size, d.first
+    p d.__getobj__.class
+    p d.is_a?(Array), d == [1, 2, 3]
+  choices: ["6\n1\nArray\nfalse\ntrue", "3\n1\nArray\nfalse\ntrue", "6\n1\nDoubled\ntrue\ntrue", "6\n1\nArray\ntrue\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `SimpleDelegator` は、自分にないメソッドの呼び出しをすべて包んだオブジェクトに委譲します。サブクラスでメソッドを定義し、`super` で元のオブジェクトのメソッドを呼んで振る舞いを変えられます（デコレータ）。
+
+    - `__getobj__` で包んでいるオブジェクトを取り出せます。
+    - クラスは `Doubled` なので `is_a?(Array)` は `false` ですが、`==` は委譲先と比較されるので `true` です。
+
+    `Forwardable` が指定したメソッドだけを委譲するのに対し、`SimpleDelegator` はまとめて委譲します。
+
+- cat: 標準添付ライブラリ
+  topic: OpenStruct
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "ostruct"
+    os = OpenStruct.new(a: 1)
+    os.b = 2
+    os[:c] = 3
+    p os.a, os.b, os.c, os.d
+    p os.to_h
+    p os.respond_to?(:b)
+  choices: ["1\n2\n3\nnil\n{:a=>1, :b=>2, :c=>3}\ntrue", "1\n2\n3\n!`NoMethodError`", "1\n2\nnil\nnil\n{:a=>1, :b=>2}\ntrue", "1\n2\n3\nnil\n{:a=>1, :b=>2, :c=>3}\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `OpenStruct` は、あとから自由に属性を追加できるオブジェクトです。`os.b = 2` や `os[:c] = 3` で属性が増え、`os.b` で読めます。設定していない属性は例外にならず `nil` です。
+
+    `to_h` でハッシュにできます。手軽ですが動作が遅いため、決まった属性なら `Struct` を使うのが一般的です（Ruby 3.5 で標準添付から外れる予定です）。
+
+- cat: 標準添付ライブラリ
+  topic: Digest と SecureRandom
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "digest"
+    require "securerandom"
+    p Digest::MD5.hexdigest("")
+    p Digest::SHA256.hexdigest("abc").size
+    p SecureRandom.hex(4).size
+    p SecureRandom.uuid.count("-")
+  choices: ["\"d41d8cd98f00b204e9800998ecf8427e\"\n64\n8\n4", "\"d41d8cd98f00b204e9800998ecf8427e\"\n32\n4\n4", "\"\"\n64\n8\n4", "\"d41d8cd98f00b204e9800998ecf8427e\"\n64\n4\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Digest::MD5`・`Digest::SHA256` などでハッシュ値を計算できます。`hexdigest` は16進数の文字列で、SHA-256 は 256 ビット = 64 文字です。
+    - `SecureRandom.hex(n)` は n **バイト**の乱数を16進数で返すので、文字数は 2n です。
+    - `SecureRandom.uuid` は `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` 形式（ハイフン4つ）の UUID を返します。
+
+- cat: 標準添付ライブラリ
+  topic: Base64
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "base64"
+    p Base64.strict_encode64("hello")
+    p Base64.decode64("aGk=")
+    p Base64.encode64("a" * 50).count("\n")
+    p Base64.urlsafe_encode64("\xff\xfe").include?("+")
+  choices: ["\"aGVsbG8=\"\n\"hi\"\n2\nfalse", "\"aGVsbG8=\\n\"\n\"hi\"\n1\ntrue", "\"aGVsbG8=\"\n\"hi\"\n1\nfalse", "\"hello\"\n\"aGk=\"\n2\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `strict_encode64` … 改行を入れずに Base64 にします。
+    - `encode64` … 60文字ごとと末尾に改行を入れます（50バイトは68文字なので改行が2つ）。
+    - `urlsafe_encode64` … `+` と `/` の代わりに `-` と `_` を使い、URL にそのまま入れられる形にします。
+
+    `Base64` は Ruby 3.4 から標準添付ではなく bundled gem になりました。中身は `Array#pack("m")` を使ったものです。
+
+- cat: 標準添付ライブラリ
+  topic: Shellwords
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "shellwords"
+    p "ls -l 'my file' \"a b\"".shellsplit
+    p Shellwords.escape("a b")
+    p ["echo", "x y"].shelljoin
+  choices: ["[\"ls\", \"-l\", \"my file\", \"a b\"]\n\"a\\\\ b\"\n\"echo x\\\\ y\"", "[\"ls\", \"-l\", \"'my\", \"file'\", \"\\\"a\", \"b\\\"\"]\n\"a\\\\ b\"\n\"echo x\\\\ y\"", "[\"ls\", \"-l\", \"my file\", \"a b\"]\n\"'a b'\"\n\"echo 'x y'\"", "[\"ls\", \"-l\", \"my file\", \"a b\"]\n\"a b\"\n\"echo x y\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Shellwords` はシェル（sh）と同じ規則で文字列を分割・エスケープします。
+
+    - `shellsplit` … 引用符で囲まれた部分を1つの単語として扱います。
+    - `Shellwords.escape`（`shellescape`）… 空白などの特殊文字の前に `\` を付けます。
+    - `shelljoin` … 配列の各要素をエスケープしてから空白でつなげます。
+
+- cat: 標準添付ライブラリ
+  topic: Timeout
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "timeout"
+    begin
+      Timeout.timeout(0.1) { sleep 1 }
+    rescue Timeout::Error => e
+      p e.class
+      p e.is_a?(StandardError)
+    end
+    p Timeout.timeout(1) { :fast }
+  choices: ["Timeout::Error\ntrue\n:fast", "Timeout::Error\nfalse\n:fast", "Timeout::Error\ntrue\nnil", '!`Interrupt` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `Timeout.timeout(秒) { }` は、ブロックが指定した時間内に終わらなければ `Timeout::Error` を発生させます。`Timeout::Error` は `RuntimeError` のサブクラスなので、クラス指定のない `rescue` でも捕まります。
+
+    時間内に終われば、ブロックの値がそのまま返ります。
+
+- cat: 標準添付ライブラリ
+  topic: OptionParser
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "optparse"
+    opts = {}
+    args = ["-v", "--name", "Ann", "input.txt"]
+    OptionParser.new do |o|
+      o.on("-v", "--verbose") { opts[:verbose] = true }
+      o.on("-n", "--name NAME") { |v| opts[:name] = v }
+    end.parse!(args)
+    p opts
+    p args
+  choices: ["{:verbose=>true, :name=>\"Ann\"}\n[\"input.txt\"]", "{:verbose=>true, :name=>\"Ann\"}\n[\"-v\", \"--name\", \"Ann\", \"input.txt\"]", "{:verbose=>true, :name=>true}\n[\"Ann\", \"input.txt\"]", '!`OptionParser::InvalidOption` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `OptionParser` はコマンドライン引数を解析するライブラリです。`on` でオプションを登録し、`"--name NAME"` のように引数名を書くと値を受け取るオプションになります。短い形 `-n` と長い形 `--name` の両方を登録できます。
+
+    `parse!` は解析したオプションを**配列から取り除く**ので、残りはファイル名などの引数だけです（`parse` は配列を変えずに残りを返します）。
+
+- cat: 標準添付ライブラリ
+  topic: ERB#result_with_hash
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "erb"
+    t = ERB.new("<%= a %>+<%= b %>=<%= a + b %>")
+    puts t.result_with_hash(a: 1, b: 2)
+    puts ERB.new("<%% raw %> <%= 1 %>").result
+    puts ERB::Util.html_escape("<b>&</b>")
+  choices: ["1+2=3\n<% raw %> 1\n&lt;b&gt;&amp;&lt;/b&gt;", "1+2=3\n<%% raw %> 1\n&lt;b&gt;&amp;&lt;/b&gt;", "a+b=a + b\n<% raw %> 1\n<b>&</b>", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    - `result_with_hash(ハッシュ)` … ハッシュのキーをローカル変数としてテンプレートを評価します（`binding` を用意しなくてよい）。
+    - `<%%` … ERB のタグではなく、文字としての `<%` を出力します。
+    - `ERB::Util.html_escape`（`h`）… `<`・`>`・`&`・`"`・`'` を HTML の実体参照に変えます。HTML を作るときは、埋め込む値をエスケープするのが基本です。
+
+- cat: 標準添付ライブラリ
+  topic: StringIO と $stdout の差し替え
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "stringio"
+    buf = StringIO.new
+    $stdout = buf
+    puts "captured"
+    print "x"
+    $stdout = STDOUT
+    p buf.string
+    io = StringIO.new("a\nb\n")
+    p io.each_line.to_a, io.read
+    io.rewind
+    p io.gets
+  choices: ["\"captured\\nx\"\n[\"a\\n\", \"b\\n\"]\n\"\"\n\"a\\n\"", "\"captured\\nx\"\n[\"a\\n\", \"b\\n\"]\n\"a\\nb\\n\"\n\"a\\n\"", "\"\"\n[\"a\\n\", \"b\\n\"]\n\"\"\n\"a\\n\"", "\"captured\\nx\"\n[\"a\", \"b\"]\n\"\"\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `puts` や `print` は `$stdout` に書き込みます。`$stdout` を `StringIO` に差し替えると、出力を文字列として取り込めます（テストでよく使う方法）。元に戻すときは定数 `STDOUT` を代入します。
+
+    `StringIO` もファイルと同じく読み込み位置を持ちます。`each_line` で最後まで読んだあとの `read` は空文字列で、`rewind` で先頭に戻せます。
+
+- cat: 標準添付ライブラリ
+  topic: Forwardable の instance_delegate
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "forwardable"
+    class Team
+      extend Forwardable
+      instance_delegate [:size, :first] => :@members
+      def_delegator :@members, :push, :add
+      def initialize = @members = []
+    end
+    t = Team.new
+    t.add("Ann")
+    t.add("Bob")
+    p t.size, t.first
+    p Team.instance_methods(false).sort
+  choices: ["2\n\"Ann\"\n[:add, :first, :size]", "2\n\"Ann\"\n[:add, :first, :push, :size]", "2\n\"Bob\"\n[:add, :first, :size]", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `instance_delegate`（別名 `delegate`）は、`[メソッド名の配列] => 委譲先` の形で複数のメソッドをまとめて委譲します。`def_delegators` と同じ働きです。
+
+    `def_delegator 委譲先, :push, :add` は委譲先の `push` を `add` という名前で使えるようにします。`push` 自体は定義されません。
+
+    委譲で作られたメソッドも普通のインスタンスメソッドとして `instance_methods` に現れます。
+
+- cat: 標準添付ライブラリ
+  topic: Observer の登録と解除
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "observer"
+    class Feed
+      include Observable
+      def publish(msg)
+        changed
+        notify_observers(msg)
+      end
+    end
+    class Reader
+      def initialize(name) = @name = name
+      def update(msg) = puts("#{@name}: #{msg}")
+    end
+    f = Feed.new
+    a = Reader.new("A")
+    f.add_observer(a)
+    f.add_observer(Reader.new("B"))
+    f.publish("hi")
+    f.delete_observer(a)
+    f.publish("bye")
+    p f.count_observers
+  choices: ["A: hi\nB: hi\nB: bye\n1", "A: hi\nB: hi\nA: bye\nB: bye\n2", "A: hi\nB: hi\n1", "B: hi\nA: hi\nB: bye\n1"]
+  answer: [0]
+  verify: output
+  exp: |
+    `add_observer` で登録した順に `update` が呼ばれます。`delete_observer` で登録を解除でき、`count_observers` で登録数を調べられます。
+
+    `changed` を呼んでから `notify_observers` するたびに、登録しているすべてのオブジェクトに通知されます。
+
+- cat: 標準添付ライブラリ
+  topic: Time.parse とタイムゾーン指定
+  q: 次のコードを実行するとどうなりますか。（タイムゾーンは日本時間 JST とします）
+  code: |
+    require "time"
+    t = Time.parse("2024-01-02 03:04:05 UTC")
+    p t.utc?
+    puts t.getlocal
+    puts Time.utc(2024, 1, 1) + 86400
+    p Time.new(2024, 1, 1, 0, 0, 0, "+00:00") == Time.utc(2024, 1, 1)
+  choices: ["true\n2024-01-02 12:04:05 +0900\n2024-01-02 00:00:00 UTC\ntrue", "false\n2024-01-02 03:04:05 +0900\n2024-01-02 00:00:00 UTC\ntrue", "true\n2024-01-02 12:04:05 +0900\n2024-01-01 00:01:26 UTC\ntrue", "true\n2024-01-02 12:04:05 +0900\n2024-01-02 00:00:00 UTC\nfalse"]
+  answer: [0]
+  verify: output
+  env: {TZ: Asia/Tokyo}
+  exp: |
+    文字列に `UTC` などのタイムゾーンが書かれていれば、`Time.parse` はそれを使います。`getlocal` でローカルのタイムゾーン（JST は +9時間）に変換した `Time` を得られます。
+
+    `Time` の足し算は秒単位なので、86400 秒はちょうど1日です。
+
+    `Time` の `==` は同じ**時刻**かどうかを比べるので、タイムゾーンの表現が違っても同じ瞬間なら `true` です。
+
+- cat: 標準添付ライブラリ
+  topic: Set の集合演算
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "set"
+    a = Set[1, 2, 3]
+    b = Set[2, 3, 4]
+    p (a | b).size
+    p (a & b).to_a
+    p (a - b).to_a
+    p (a ^ b).to_a.sort
+    p a.subset?(Set[1, 2, 3, 4])
+  choices: ["4\n[2, 3]\n[1]\n[1, 4]\ntrue", "6\n[2, 3]\n[1]\n[1, 4]\ntrue", "4\n[2, 3]\n[1, 4]\n[1]\ntrue", "4\n[2, 3]\n[1]\n[1, 4]\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `|` は和集合、`&` は積集合、`-` は差集合、`^` は対称差（どちらか一方だけに含まれる要素）です。
+
+    `Set` は重複を持たないので、和集合の要素数は 4 です。`subset?` は自分のすべての要素が引数に含まれていれば `true` を返します。
+
+- cat: 標準添付ライブラリ
+  topic: StringIO の読み書き
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "stringio"
+    io = StringIO.new
+    io.puts "abc"
+    io.print "de"
+    p io.string
+    io.rewind
+    p io.gets
+    p io.read
+    p io.read
+  choices: ["\"abc\\nde\"\n\"abc\\n\"\n\"de\"\n\"\"", "\"abc\\nde\"\n\"abc\\n\"\n\"de\"\nnil", "\"abc\\nde\\n\"\n\"abc\\n\"\n\"de\\n\"\n\"\"", "\"abc\\nde\"\n\"abc\"\n\"de\"\n\"\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `StringIO` は文字列を `IO` のように読み書きできるクラスです。`puts` は改行を付け、`print` は付けません。`string` で中身全体を得られます。
+
+    `rewind` で読み書きの位置を先頭に戻すと、`gets` は1行（改行を含む）を、`read` は残りすべてを返します。
+
+    末尾で引数なしの `read` を呼ぶと、`nil` ではなく空文字列 `""` を返します（`read(長さ)` の場合は `nil`）。

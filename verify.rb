@@ -8,7 +8,7 @@ require "json"
 # Keep these lists in the same order as `files` in src/lib/exams.ts.
 EXAMS = {
   "ruby-silver" => %w[q_syntax q_lib q_oop q_syntax2 q_lib2 q_oop2 q_extra q_official],
-  "ruby-gold" => %w[g_syntax g_oop g_lib g_stdlib g_official],
+  "ruby-gold" => %w[g_syntax g_oop g_lib g_stdlib g_official g_syntax2 g_oop2 g_lib2 g_stdlib2],
 }
 BLANK = "__(1)__"
 
