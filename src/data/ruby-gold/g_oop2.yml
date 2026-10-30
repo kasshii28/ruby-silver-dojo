@@ -1,0 +1,855 @@
+# オブジェクト指向（追加分）
+- cat: オブジェクト指向
+  topic: def と attr_accessor の戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Item
+      p(attr_accessor :name)
+      p(def price = 100)
+      private def secret = "s"
+    end
+    p Item.private_method_defined?(:secret)
+  choices: ["[:name, :name=]\n:price\ntrue", "nil\nnil\ntrue", "[:name, :name=]\n:price\nfalse", "[:name]\n:price\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `def` はメソッド名のシンボルを返します。そのため `private def secret ... end` と書くと、`private(:secret)` が呼ばれてそのメソッドだけを private にできます。
+
+    `attr_accessor` は Ruby 3.0 から、定義したメソッド名の配列を返すようになりました。これにより `private attr_accessor :name` のような書き方もできます。
+
+- cat: オブジェクト指向
+  topic: respond_to? と private
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Box
+      def open = "opened"
+      private
+      def lock = "locked"
+    end
+    b = Box.new
+    p b.respond_to?(:open)
+    p b.respond_to?(:lock)
+    p b.respond_to?(:lock, true)
+    p Box.instance_methods(false)
+  choices: ["true\nfalse\ntrue\n[:open]", "true\ntrue\ntrue\n[:open, :lock]", "true\nfalse\nfalse\n[:open]", "true\nfalse\ntrue\n[:open, :lock]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `respond_to?` は既定で public なメソッドだけを調べます。第2引数に `true` を渡すと、private・protected のメソッドも対象になります。
+
+    `instance_methods` は public と protected のインスタンスメソッドの一覧で、引数 `false` で継承したものを除きます。private は `private_instance_methods` で調べます。
+
+- cat: オブジェクト指向
+  topic: is_a? と instance_of?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Walk; end
+    class Animal; include Walk; end
+    class Dog < Animal; end
+    d = Dog.new
+    p d.is_a?(Animal), d.instance_of?(Animal)
+    p d.kind_of?(Walk), Walk === d
+    p Dog < Animal, Animal <= Animal, Dog <=> String
+  choices: ["true\nfalse\ntrue\ntrue\ntrue\ntrue\nnil", "true\ntrue\ntrue\ntrue\ntrue\ntrue\nnil", "true\nfalse\nfalse\nfalse\ntrue\ntrue\n-1", "true\nfalse\ntrue\ntrue\ntrue\nfalse\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `is_a?`（`kind_of?`）… そのクラス・スーパークラス・ミックスインしたモジュールのどれかなら `true`。
+    - `instance_of?` … **ちょうどそのクラス**のインスタンスのときだけ `true`。
+    - `Module#===` … `is_a?` と同じ判定で、`case` 文で使われます。
+
+    クラス・モジュールどうしは `<`、`<=` で継承関係を比べられます。関係のないクラスどうしの `<=>` は `nil` です。
+
+- cat: オブジェクト指向
+  topic: BasicObject を継承したクラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Blank < BasicObject
+      def hi = "hi"
+    end
+    b = Blank.new
+    p b.hi
+    p Blank.ancestors
+    b.inspect
+  choices:
+    - '`"hi"` と `[Blank, BasicObject]` が出力された後、`NoMethodError` が発生する'
+    - '`"hi"` と `[Blank, BasicObject]` が出力され、`#<Blank>` が返る'
+    - '`"hi"` と `[Blank, Object, Kernel, BasicObject]` が出力された後、`NoMethodError` が発生する'
+    - '`Blank.new` で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"hi\"\n[Blank, BasicObject]", error: NoMethodError}
+  exp: |
+    `BasicObject` は `Object` のスーパークラスで、`==`・`equal?`・`!`・`instance_eval`・`__send__`・`__id__` など、ごく少数のメソッドしか持ちません。
+
+    `BasicObject` を直接継承すると `Object` と `Kernel` が継承チェーンに入らないので、`inspect`・`puts`・`class` なども使えません。`method_missing` で何でも別のオブジェクトに転送するプロキシクラスを作るときに使われます。
+
+- cat: オブジェクト指向
+  topic: Object の <=> と ==
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = Object.new
+    b = Object.new
+    p a <=> a, a <=> b
+    p a == b, a.eql?(a)
+    p [a, b].sort rescue p $!.class
+  choices: ["0\nnil\nfalse\ntrue\nArgumentError", "0\n-1\nfalse\ntrue\nArgumentError", "0\nnil\nfalse\ntrue\nNoMethodError", "0\nnil\ntrue\ntrue\nArgumentError"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Object#<=>` は、同じオブジェクトなら `0`、それ以外は `nil`（比較できない）を返します。`Object#==` と `eql?` は既定で同一性（`equal?`）を調べます。
+
+    `sort` は要素どうしを `<=>` で比べますが、`nil` が返ると順序を決められず `ArgumentError`（`comparison of Object with Object failed`）になります。
+
+- cat: オブジェクト指向
+  topic: Method#owner と super_method
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Loud
+      def speak = super.upcase
+    end
+    class Animal
+      def speak = "..."
+    end
+    class Dog < Animal
+      include Loud
+      def speak = "woof " + super
+    end
+    m = Dog.new.method(:speak)
+    p m.owner
+    p m.super_method.owner
+    p m.super_method.super_method.owner
+    p m.call
+  choices: ["Dog\nLoud\nAnimal\n\"woof ...\"", "Dog\nAnimal\nLoud\n\"woof ...\"", "Dog\nLoud\nAnimal\n\"WOOF ...\"", "Loud\nDog\nAnimal\n\"woof ...\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Method#owner` はそのメソッドを定義しているクラス・モジュール、`super_method` は `super` で次に呼ばれるメソッドです。
+
+    `Dog.ancestors` は `[Dog, Loud, Animal, ...]` なので、`Dog#speak` → `Loud#speak` → `Animal#speak` の順に呼ばれます。`Loud#speak` が `"..."` を大文字にしても記号なので変わらず、`"woof ..."` になります。
+
+- cat: オブジェクト指向
+  topic: define_singleton_method
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    greeting = "hello"
+    obj = Object.new
+    obj.define_singleton_method(:greet) { |name| "#{greeting}, #{name}" }
+    p obj.greet("Ann")
+    p obj.singleton_methods
+    p Object.new.respond_to?(:greet)
+  choices: ["\"hello, Ann\"\n[:greet]\nfalse", "\"hello, Ann\"\n[]\nfalse", "\"hello, Ann\"\n[:greet]\ntrue", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `define_singleton_method(名前) { }` は、そのオブジェクトだけの特異メソッドをブロックで定義します。`def obj.greet` と違い、ブロックはクロージャなので外側の変数 `greeting` を使えます。
+
+    特異メソッドなので、ほかの `Object` のインスタンスにはありません。
+
+- cat: オブジェクト指向
+  topic: 特異クラスの継承関係
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Foo; end
+    s = Foo.singleton_class
+    p s.singleton_class?
+    p s.superclass
+    p Foo.new.singleton_class.superclass
+    p s.instance_of?(Class)
+  choices: ["true\n#<Class:Object>\nFoo\ntrue", "true\nObject\nFoo\ntrue", "false\n#<Class:Object>\nObject\ntrue", "true\n#<Class:Object>\nFoo\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    - クラス `Foo` の特異クラス `#<Class:Foo>` のスーパークラスは、スーパークラス `Object` の特異クラス `#<Class:Object>` です。この並びのおかげで、クラスメソッドがサブクラスに継承されます。
+    - インスタンスの特異クラスのスーパークラスは、そのインスタンスのクラス（`Foo`）です。
+
+    特異クラスも `Class` のインスタンスで、`singleton_class?` で特異クラスかどうかを判定できます。
+
+- cat: オブジェクト指向
+  topic: クラスメソッドとsuper
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Base
+      def self.create(*args) = "Base(#{args.join(",")})"
+    end
+    class Sub < Base
+      def self.create(*args)
+        "Sub<" + super + ">"
+      end
+    end
+    p Sub.create(1, 2)
+  choices: ['"Sub<Base(1,2)>"', '"Sub<Base()>"', '!`NoMethodError` が発生する', '"Base(1,2)"']
+  answer: [0]
+  verify: output
+  exp: |
+    クラスメソッドも継承され、`super` で親クラスの同名のクラスメソッドを呼べます。`Sub` の特異クラスのスーパークラスが `Base` の特異クラスだからです。
+
+    引数なしの `super` は、受け取った引数（`1, 2`）をそのまま渡します。
+
+- cat: オブジェクト指向
+  topic: extend したモジュールとsuper
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Logging
+      def save = "log+" + super
+    end
+    class Doc
+      def save = "saved"
+    end
+    d = Doc.new
+    d.extend(Logging)
+    p d.save
+    p Doc.new.save
+    p d.singleton_class.include?(Logging), Doc.include?(Logging)
+  choices: ["\"log+saved\"\n\"saved\"\ntrue\nfalse", "\"log+saved\"\n\"log+saved\"\ntrue\ntrue", "\"saved\"\n\"saved\"\nfalse\nfalse", "\"log+saved\"\n\"saved\"\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `obj.extend(M)` は、`obj` の特異クラスに `M` を `include` するのと同じです。継承チェーンは `[特異クラス, Logging, Doc, ...]` となり、`Logging#save` が先に見つかって、`super` で `Doc#save` が呼ばれます。
+
+    特異クラスにだけ追加されるので、`Doc` 自身やほかの `Doc` のインスタンスには影響しません。
+
+- cat: オブジェクト指向
+  topic: singleton_class.prepend
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Cache
+      def fetch(k) = "cached:" + super
+    end
+    class Store
+      def self.fetch(k) = "db:#{k}"
+      singleton_class.prepend(Cache)
+    end
+    p Store.fetch(1)
+  choices: ['"cached:db:1"', '"db:1"', '!`NoMethodError` が発生する', '"cached:"']
+  answer: [0]
+  verify: output
+  exp: |
+    クラスメソッドはクラスの特異クラスのインスタンスメソッドです。そこで `singleton_class.prepend(M)` とすると、クラスメソッドの前にモジュールを差し込めます。`Cache#fetch` が先に呼ばれ、`super` で元の `Store.fetch` が呼ばれます。
+
+    `class << self; prepend Cache; end` と書いても同じです。
+
+- cat: オブジェクト指向
+  topic: extended と prepended フック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Hooks
+      def self.extended(obj) = puts("extended #{obj.class}")
+      def self.prepended(mod) = puts("prepended to #{mod}")
+      def self.included(mod) = puts("included in #{mod}")
+    end
+    class A
+      prepend Hooks
+    end
+    A.new.extend(Hooks)
+  choices: ["prepended to A\nextended A", "included in A\nextended A", "prepended to A\nincluded in A\nextended A", "prepended to A"]
+  answer: [0]
+  verify: output
+  exp: |
+    モジュールには、ミックスインのされ方ごとにフックメソッドがあります。
+
+    - `include` → `included(クラス)`
+    - `prepend` → `prepended(クラス)`
+    - `extend` → `extended(オブジェクト)`
+
+    `prepend` しても `included` は呼ばれません。
+
+- cat: オブジェクト指向
+  topic: method_added
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Tracker
+      def self.method_added(name)
+        puts "added #{name}"
+      end
+      def a; end
+      attr_reader :b
+      define_method(:c) {}
+      def self.d; end
+    end
+  choices: ["added a\nadded b\nadded c", "added a\nadded c", "added a\nadded b\nadded c\nadded d", "added a"]
+  answer: [0]
+  verify: output
+  exp: |
+    `method_added` は、そのクラスに**インスタンスメソッド**が追加されるたびに呼ばれるフックです。`def` だけでなく、`attr_reader` や `define_method` で作ったメソッドでも呼ばれます。
+
+    `def self.d` は特異メソッドなので、`method_added` ではなく `singleton_method_added` が呼ばれます。
+
+- cat: オブジェクト指向
+  topic: inherited が呼ばれる時点
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Plugin
+      @list = []
+      class << self
+        attr_reader :list
+        def inherited(sub)
+          super
+          Plugin.list << sub.instance_methods(false).size
+        end
+      end
+    end
+    class A < Plugin
+      def run; end
+    end
+    B = Class.new(Plugin) { def run; end }
+    p Plugin.list
+  choices: ['[0, 0]', '[1, 1]', '[0, 1]', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `inherited` は、サブクラスが**作られた直後、本体が評価される前**に呼ばれます。`class A < Plugin` の行や `Class.new(Plugin)` の時点で呼ばれるので、まだ `run` は定義されておらず、どちらも `0` です。
+
+    サブクラスの一覧を登録するのにはよく使われますが、サブクラスの中身を前提にした処理は書けない点に注意しましょう。
+
+- cat: オブジェクト指向
+  topic: const_set と remove_const
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Config
+      const_set(:LEVEL, 3)
+    end
+    p Config::LEVEL
+    p Config.const_defined?(:LEVEL)
+    Config.send(:remove_const, :LEVEL)
+    p Config.const_defined?(:LEVEL)
+    Config.const_set(:level, 1)
+  choices:
+    - '`3`、`true`、`false` が出力された後、`NameError` が発生する'
+    - '`3`、`true`、`false` が出力され、エラーは発生しない'
+    - '`3`、`true`、`true` が出力された後、`NameError` が発生する'
+    - '`remove_const` の行で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "3\ntrue\nfalse", error: NameError}
+  exp: |
+    `const_set(名前, 値)` で動的に定数を定義できます。定数名は大文字で始まる必要があり、`:level` のような名前は `NameError`（`wrong constant name`）です。
+
+    `remove_const` は private メソッドなので、外からは `send` で呼びます。
+
+- cat: オブジェクト指向
+  topic: private_constant
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Api
+      KEY = "secret"
+      private_constant :KEY
+      def self.key_size = KEY.size
+    end
+    p Api.key_size
+    p Api.constants
+    p Api::KEY
+  choices:
+    - '`6` と `[]` が出力された後、`NameError` が発生する'
+    - '`6`、`[:KEY]`、`"secret"` が出力される'
+    - '`6` と `[:KEY]` が出力された後、`NameError` が発生する'
+    - '1行目で `NameError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "6\n[]", error: NameError}
+  exp: |
+    `private_constant` を付けた定数は、クラスの中からは普通に参照できますが、`Api::KEY` のように外からスコープを指定して参照すると `NameError` です。`constants` の一覧にも出てきません。
+
+- cat: オブジェクト指向
+  topic: 定数の探索（継承とレキシカル）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      NAME = "parent"
+      def self.name_of = self::NAME
+    end
+    class Child < Parent
+      NAME = "child"
+      def self.lex = NAME
+    end
+    class Other < Parent
+      def self.lex = NAME
+    end
+    p Child.name_of, Child.lex, Other.lex
+  choices: ["\"child\"\n\"child\"\n\"parent\"", "\"parent\"\n\"child\"\n\"parent\"", "\"child\"\n\"child\"\n!`NameError`", "\"parent\"\n\"parent\"\n\"parent\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `self::NAME` … レシーバのクラス（呼んだのが `Child` なら `Child`）から探すので `"child"` です。メソッドを書いた `Parent` ではなく、呼び出し元のクラスの定数を使いたいときの書き方です。
+    - 名前だけの `NAME` … まず書かれた場所のレキシカルスコープ（`Child` 自身）、次に継承チェーンを探します。`Other` には `NAME` がないので、スーパークラス `Parent` の `"parent"` が見つかります。
+
+- cat: オブジェクト指向
+  topic: Object#tap と then
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [3, 1, 2].tap { |x| x.sort! }.map { _1 * 10 }
+    b = 5.then { _1 + 1 }
+    c = [1, 2].tap { |x| x + [3] }
+    p a, b, c
+  choices: ["[10, 20, 30]\n6\n[1, 2]", "[30, 10, 20]\n6\n[1, 2]", "[10, 20, 30]\n6\n[1, 2, 3]", "[10, 20, 30]\n5\n[1, 2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `tap` … ブロックにレシーバを渡して実行し、**レシーバ自身**を返します。ブロックの値は捨てられるので、`x + [3]` の結果は残りません（`sort!` のようにレシーバを変更した場合は反映されます）。
+    - `then`（`yield_self`）… ブロックにレシーバを渡し、**ブロックの値**を返します。
+
+- cat: オブジェクト指向
+  topic: puts と to_s / inspect
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Pt
+      def to_s = "pt"
+      def inspect = "Pt!"
+    end
+    puts Pt.new
+    puts [Pt.new, Pt.new]
+    p [Pt.new]
+    puts "#{[Pt.new]}"
+  choices: ["pt\npt\npt\n[Pt!]\n[Pt!]", "pt\n[Pt!, Pt!]\n[Pt!]\n[pt]", "pt\npt\npt\n[pt]\n[pt]", "Pt!\nPt!\nPt!\n[Pt!]\n[Pt!]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `puts` は配列を受け取ると、要素を1つずつ `to_s` して1行ずつ出力します。
+    - `p` は `inspect` を使います。配列の `inspect` は各要素の `inspect` を並べます。
+    - 配列の `to_s` は `inspect` と同じなので、式展開 `"#{[...]}"` の中では要素の `inspect` が使われます。
+
+- cat: オブジェクト指向
+  topic: Module の include? と ancestors
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module A; end
+    module B; include A; end
+    class C; include B; end
+    p C.include?(A)
+    p C.ancestors.take(4)
+    p B.instance_of?(Module), C.instance_of?(Module)
+  choices: ["true\n[C, B, A, Object]\ntrue\nfalse", "false\n[C, B, Object, Kernel]\ntrue\nfalse", "true\n[C, A, B, Object]\ntrue\nfalse", "true\n[C, B, A, Object]\ntrue\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    モジュールが別のモジュールを `include` していると、そのモジュールを `include` したクラスの継承チェーンにも両方が入ります（`B` の後ろに `A`）。`include?` は間接的に入ったモジュールでも `true` です。
+
+    クラスは `Module` のサブクラス `Class` のインスタンスなので、`instance_of?(Module)` は `false` です（`is_a?(Module)` なら `true`）。
+
+- cat: オブジェクト指向
+  topic: Module#refine と using の範囲
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Ext
+      refine Array do
+        def second = self[1]
+      end
+    end
+    def outside(a) = a.second rescue "no"
+    using Ext
+    def inside(a) = a.second
+    p inside([1, 2])
+    p outside([1, 2])
+    p [1, 2].send(:second)
+  choices: ["2\n\"no\"\n2", "2\n2\n2", "2\n\"no\"\n\"no\"", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    refinement は `using` を書いた**位置より後ろ**のコードにだけ効きます。`outside` は `using` より前に定義されているので、`second` が見つからず `NoMethodError` になり、`rescue` 修飾子で `"no"` が返ります。
+
+    呼び出しのタイミングではなく、コードが書かれた位置で決まる点がポイントです。Ruby 2.4 からは `send` 経由の呼び出しにも refinement が効きます。
+
+- cat: オブジェクト指向
+  topic: method_missing と super の連鎖
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Proxy < BasicObject
+      def initialize(target) = @target = target
+      def method_missing(name, *args, &blk)
+        ::Kernel.puts "-> #{name}"
+        @target.__send__(name, *args, &blk)
+      end
+      def respond_to_missing?(n, p = false) = @target.respond_to?(n, p)
+    end
+    pr = Proxy.new([3, 1, 2])
+    p pr.sort
+    p pr.size
+  choices: ["-> sort\n[1, 2, 3]\n-> size\n3", "[1, 2, 3]\n3", "-> sort\n-> size\n[1, 2, 3]\n3", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `BasicObject` を継承したクラスはほとんどメソッドを持たないので、`sort` も `size` も `method_missing` に届き、中身の配列に転送されます。このような「プロキシ（代理）」オブジェクトは `BasicObject` で作るのが定番です。
+
+    `BasicObject` の中では `Kernel` のメソッドや定数がそのまま見えないので、`::Kernel.puts` のようにトップレベルから指定しています。
+
+    ※ `p pr.sort` の `p` は、プロキシではなくトップレベルの `Kernel#p` です。
+
+- cat: オブジェクト指向
+  topic: クラス定義の再オープン
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Counter
+      def initialize = @n = 0
+      def up = @n += 1
+    end
+    c = Counter.new
+    class Counter
+      def up = @n += 10
+      def value = @n
+    end
+    c.up
+    p c.value
+    class Counter < Object; end
+    class Counter < Array; end
+  choices:
+    - '`10` が出力された後、`TypeError` が発生する'
+    - '`1` が出力された後、`TypeError` が発生する'
+    - '`10` が出力され、エラーは発生しない'
+    - '`c.value` で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "10", error: TypeError}
+  exp: |
+    `class` は既存のクラスを**再オープン**して、メソッドを追加・上書きできます。すでに作ったインスタンス `c` にも、新しい定義がすぐに反映されます。
+
+    再オープン時にスーパークラスを書く場合、元と同じ（`Object`）なら問題ありませんが、違うクラスを書くと `TypeError`（`superclass mismatch`）です。
+
+- cat: オブジェクト指向
+  topic: freeze したオブジェクトとクラス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Point
+      attr_accessor :x
+    end
+    pt = Point.new.freeze
+    begin
+      pt.x = 1
+    rescue => e
+      p e.class
+    end
+    p pt.dup.frozen?
+    Point.freeze
+    class Point
+      def y = 0
+    end
+  choices:
+    - '`FrozenError` と `false` が出力された後、`FrozenError` が発生する'
+    - '`FrozenError` と `true` が出力された後、`FrozenError` が発生する'
+    - '`FrozenError` と `false` が出力され、エラーは発生しない'
+    - '`NoMethodError` と `false` が出力された後、`FrozenError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "FrozenError\nfalse", error: FrozenError}
+  exp: |
+    凍結したオブジェクトのインスタンス変数は変更できず、セッターを呼ぶと `FrozenError` です。`dup` で作ったコピーは凍結されていません。
+
+    クラスも1つのオブジェクトなので凍結できます。凍結したクラスにはメソッドを追加できず、再オープンして `def` すると `FrozenError` です。
+
+- cat: オブジェクト指向
+  topic: 委譲とメソッドの可視性の継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      private def helper = "help"
+      def call_helper = helper
+    end
+    class Child < Parent
+      def call_self = self.helper
+      def call_other(o) = o.helper
+    end
+    c = Child.new
+    p c.call_helper
+    p c.call_self
+    p c.call_other(Child.new)
+  choices:
+    - '`"help"` が2回出力された後、`NoMethodError` が発生する'
+    - '`"help"` が3回出力される'
+    - '`"help"` が1回出力された後、`NoMethodError` が発生する'
+    - '1つ目の `call_helper` で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"help\"\n\"help\"", error: NoMethodError}
+  exp: |
+    private メソッドはサブクラスからも呼べます（Java の private とは違います）。ただし、レシーバを付けずに呼ぶか、`self.` を付ける場合だけです（`self.` は Ruby 2.7 から許可）。
+
+    `o.helper` のように**ほかのオブジェクト**をレシーバにすると、同じクラスのインスタンスでも呼べず `NoMethodError` です。これを許したい場合は protected にします。
+
+- cat: オブジェクト指向
+  topic: instance_variable_defined? と remove_instance_variable
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Cfg
+      def initialize = @a = nil
+    end
+    c = Cfg.new
+    p c.instance_variable_defined?(:@a)
+    p c.instance_variable_defined?(:@b)
+    p c.remove_instance_variable(:@a)
+    p c.instance_variables
+  choices: ["true\nfalse\nnil\n[]", "false\nfalse\nnil\n[]", "true\nfalse\ntrue\n[]", "true\nfalse\nnil\n[:@a]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `instance_variable_defined?` は、値ではなく**代入されたことがあるか**を調べます。`nil` を代入した `@a` も定義済みで `true` です。
+
+    `remove_instance_variable` はインスタンス変数を取り除き、その時点の値（ここでは `nil`）を返します。
+
+- cat: オブジェクト指向
+  topic: Comparable と <=> が nil を返す場合
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Score
+      include Comparable
+      attr_reader :v
+      def initialize(v) = @v = v
+      def <=>(o) = o.is_a?(Score) ? v <=> o.v : nil
+    end
+    p Score.new(1) == Score.new(1)
+    p Score.new(1) == 1
+    p Score.new(1) < 1
+  choices:
+    - '`true` と `false` が出力された後、`ArgumentError` が発生する'
+    - '`true`、`false`、`false` が出力される'
+    - '`false` と `false` が出力された後、`ArgumentError` が発生する'
+    - '`true` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "true\nfalse", error: ArgumentError}
+  exp: |
+    `Comparable#==` は `<=>` が `0` なら `true` です。`<=>` が `nil`（比較できない）を返した場合、`==` は例外にせず `false` を返します。
+
+    一方 `<`・`>` などは、`<=>` が `nil` だと `ArgumentError`（`comparison of Score with 1 failed`）を発生させます。
+
+- cat: オブジェクト指向
+  topic: hash と eql? の再定義
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Key
+      attr_reader :id
+      def initialize(id) = @id = id
+      def eql?(o) = o.is_a?(Key) && id == o.id
+      def hash = id.hash
+    end
+    h = {Key.new(1) => "one"}
+    p h[Key.new(1)]
+    p [Key.new(2), Key.new(2)].uniq.size
+    p Key.new(3) == Key.new(3)
+  choices: ["\"one\"\n1\nfalse", "nil\n2\nfalse", "\"one\"\n1\ntrue", "\"one\"\n2\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュのキーの比較と `uniq`・`Array#-`・`Set` などの重複判定は、`hash` と `eql?` を使います。両方を定義すると、別のオブジェクトでも同じキーとして扱われます。
+
+    `==` は `eql?` とは別のメソッドなので、定義し直していなければ同一性の比較のままで `false` です。
+
+- cat: オブジェクト指向
+  topic: Struct の継承とメソッド追加
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class User < Struct.new(:name, :age)
+      def adult? = age >= 20
+      def to_s = "#{name}(#{age})"
+    end
+    u = User.new("Ann", 25)
+    puts u
+    p u.adult?
+    p User.members
+    p User.superclass.superclass
+  choices: ["Ann(25)\ntrue\n[:name, :age]\nStruct", "Ann(25)\ntrue\n[:name, :age]\nObject", "#<struct User name=\"Ann\", age=25>\ntrue\n[:name, :age]\nStruct", "Ann(25)\ntrue\n[\"name\", \"age\"]\nStruct"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Struct.new(...)` は無名のクラスを返すので、それを継承してメソッドを足すこともできます。`User` → 無名の Struct クラス → `Struct` という継承関係になります。
+
+    `members` はメンバー名のシンボルの配列です。なお、継承チェーンに余分なクラスが入るので、`Struct.new(:name, :age) do ... end` とブロックで書く方法が推奨されています。
+
+- cat: オブジェクト指向
+  topic: instance_eval と self / 定義先
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Robot
+      def initialize = @name = "R2"
+    end
+    r = Robot.new
+    r.instance_eval do
+      def beep = "beep from #{@name}"
+    end
+    p r.beep
+    p Robot.new.respond_to?(:beep)
+    p r.singleton_methods
+  choices: ["\"beep from R2\"\nfalse\n[:beep]", "\"beep from R2\"\ntrue\n[]", "\"beep from \"\nfalse\n[:beep]", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    インスタンスに対する `instance_eval` の中の `def` は、そのインスタンスの**特異メソッド**を定義します。ほかのインスタンスには影響しません。
+
+    特異メソッドの中の `@name` は、そのインスタンスのインスタンス変数です。
+
+- cat: オブジェクト指向
+  topic: Module.new と名前
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    m = Module.new do
+      def hi = "hi"
+    end
+    class A; end
+    A.include(m)
+    p A.new.hi
+    p m.name
+    Greet = m
+    p m.name
+    p A.ancestors[1]
+  choices: ["\"hi\"\nnil\n\"Greet\"\nGreet", "\"hi\"\n\"m\"\n\"Greet\"\nGreet", "\"hi\"\nnil\nnil\n#<Module:0x...>", '!`TypeError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `Module.new { }` で無名のモジュールを作れます。無名でも `include` できます。
+
+    `Class.new` と同じく、定数に代入した時点でその名前がモジュール名になり、`ancestors` の表示も `Greet` に変わります。
+
+- cat: オブジェクト指向
+  topic: alias_method と super
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Base
+      def greet = "base"
+    end
+    class Sub < Base
+      def greet = "sub+" + super
+      alias_method :hello, :greet
+    end
+    p Sub.new.hello
+    p Sub.instance_method(:hello).name
+    p Sub.instance_method(:hello).original_name
+  choices: ["\"sub+base\"\n:hello\n:greet", "\"sub+base\"\n:greet\n:greet", '!`NoMethodError` が発生する', "\"sub+\"\n:hello\n:greet"]
+  answer: [0]
+  verify: output
+  exp: |
+    別名で呼んでも、メソッドの中身は元の `greet` と同じなので、`super` は**元の名前**（`greet`）で親クラスのメソッドを探します。そのため `"sub+base"` です。
+
+    `UnboundMethod#name` は呼ばれた名前、`original_name` は定義したときの名前です。
+
+- cat: オブジェクト指向
+  topic: protected と同じクラスのインスタンス
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Animal
+      def same_age?(o) = age == o.age
+      protected
+      def age = 3
+    end
+    class Dog < Animal; end
+    class Cat < Animal; end
+    p Dog.new.same_age?(Cat.new)
+    p Animal.protected_instance_methods
+  choices: ["true\n[:age]", '!`NoMethodError` が発生する', "true\n[]", "false\n[:age]"]
+  answer: [0]
+  verify: output
+  exp: |
+    protected メソッドは、そのメソッドを**定義したクラス**（`Animal`）を継承したインスタンスどうしであれば、レシーバを付けて呼べます。`Dog` と `Cat` は別のクラスですが、どちらも `Animal` のサブクラスなので `o.age` は呼べます。
+
+    `protected_instance_methods` で protected なメソッドの一覧を調べられます。
+
+- cat: オブジェクト指向
+  topic: instance_variable と attr の命名
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Account
+      attr_writer :balance
+      def show = @balance
+      def reset
+        balance = 0
+        self
+      end
+    end
+    a = Account.new
+    a.balance = 100
+    p a.reset.show
+  choices: ['100', '0', 'nil', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    メソッドの中で `balance = 0` と書くと、セッターの呼び出しではなく**ローカル変数への代入**と解釈されます。`@balance` は変わらず `100` のままです。
+
+    セッターを呼ぶには `self.balance = 0` と、レシーバに `self` を付ける必要があります（セッターは private でも `self.` を付けて呼べます）。
+
+- cat: オブジェクト指向
+  topic: Object#extend と複数モジュール
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module A
+      def who = "A>" + (defined?(super) ? super : "end")
+    end
+    module B
+      def who = "B>" + (defined?(super) ? super : "end")
+    end
+    o = Object.new
+    o.extend(A, B)
+    p o.who
+    o2 = Object.new
+    o2.extend(A)
+    o2.extend(B)
+    p o2.who
+  choices: ["\"A>B>end\"\n\"B>A>end\"", "\"B>A>end\"\n\"B>A>end\"", "\"A>B>end\"\n\"A>B>end\"", "\"A>end\"\n\"B>end\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `extend(A, B)` のように複数渡すと、**後ろから順に** extend されます。その結果、継承チェーンは `[特異クラス, A, B, ...]` となり、`A` が先に見つかります（`include(A, B)` も同じ）。
+
+    1つずつ `extend(A)`、`extend(B)` すると、あとから extend した `B` が手前に入ります。
+
+    `defined?(super)` は、`super` で呼べるメソッドがあれば `"super"`、なければ `nil` を返します。
+
+- cat: オブジェクト指向
+  topic: クラス変数とクラスインスタンス変数の違い
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Shape
+      @count = 0
+      @@total = 0
+      def self.add
+        @count = (@count || 0) + 1
+        @@total += 1
+      end
+      def self.stats = [@count, @@total]
+    end
+    class Circle < Shape; end
+    Shape.add
+    Circle.add
+    Circle.add
+    p Shape.stats, Circle.stats
+  choices: ["[1, 3]\n[2, 3]", "[3, 3]\n[3, 3]", "[1, 1]\n[2, 2]", "[1, 3]\n[nil, 3]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - クラスのインスタンス変数 `@count` は、メソッドを呼んだクラス（`self`）ごとに別々です。`Circle.add` の中の `self` は `Circle` なので、`Circle` 自身の `@count` が増えます。
+    - クラス変数 `@@total` は継承階層全体で1つなので、3回分すべてが合計されます。
+
+- cat: オブジェクト指向
+  topic: public_send とセッター
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Form
+      attr_accessor :name, :email
+    end
+    f = Form.new
+    {name: "Ann", email: "a@x"}.each { |k, v| f.public_send("#{k}=", v) }
+    p [f.name, f.email]
+    p f.public_send(:name=, "Bob")
+  choices: ["[\"Ann\", \"a@x\"]\n\"Bob\"", "[nil, nil]\n\"Bob\"", "[\"Ann\", \"a@x\"]\n#<Form ...>", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `public_send` / `send` にメソッド名の文字列やシンボルを渡すと、`"name="` のようなセッターも呼べます。ハッシュから属性をまとめて設定するときによく使います。
+
+    セッターの戻り値は、`f.name = "Bob"` の形の代入式なら常に右辺ですが、`send` で呼んだ場合は**メソッドの戻り値**です。`attr_accessor` のセッターは代入した値を返すので `"Bob"` です。
+
+- cat: オブジェクト指向
+  topic: オブジェクトの比較とソート（sort_by と <=>）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    Card = Struct.new(:rank, :suit) do
+      include Comparable
+      def <=>(o) = [rank, suit] <=> [o.rank, o.suit]
+    end
+    cards = [Card.new(2, "s"), Card.new(1, "h"), Card.new(2, "c")]
+    p cards.sort.map(&:to_a)
+    p cards.max.suit
+    p cards.minmax.map(&:rank)
+  choices: ["[[1, \"h\"], [2, \"c\"], [2, \"s\"]]\n\"s\"\n[1, 2]", "[[1, \"h\"], [2, \"s\"], [2, \"c\"]]\n\"c\"\n[1, 2]", "[[2, \"s\"], [2, \"c\"], [1, \"h\"]]\n\"s\"\n[2, 1]", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `Struct` のブロックの中でも `include` やメソッド定義ができます。`<=>` を定義すれば `sort`・`max`・`min`・`minmax` はそれを使って比べます。
+
+    配列の `<=>` は先頭から順に比べるので、`rank` が同じなら `suit`（文字列の辞書順）で決まり、`"c" < "s"` です。

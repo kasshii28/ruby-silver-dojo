@@ -1,0 +1,871 @@
+# 文法・実行環境（追加分）
+- cat: 実行環境
+  topic: -a と -F
+  q: '`printf "a:1\nb:2\n" | ruby -F: -lane ''print $F[1]''` を実行したときの出力として正しいものを選択してください。'
+  choices: ["1\n2", "a\nb", "a:1\nb:2", "12"]
+  cm: true
+  answer: [0]
+  verify: checks
+  setup: 'out = IO.popen(["ruby", "-F:", "-lane", "print $F[1]"], "r+") { |io| io.write("a:1\nb:2\n"); io.close_write; io.read }'
+  checks:
+    - 'exit(out == "1\n2\n")'
+    - 'exit(out == "a\nb\n")'
+    - 'exit(out == "a:1\nb:2\n")'
+    - 'exit(out == "12")'
+  exp: |
+    - `-n` … 各行について `while gets ... end` のように繰り返します。
+    - `-a` … 読んだ行を分割して配列 `$F` に入れます（オートスプリット）。区切りは既定で空白です。
+    - `-F:` … `-a` の区切り文字を `:` にします。
+    - `-l` … 読んだ行の改行を取り除き、`print` の後に改行を付けます。
+
+    `-lane` のようにまとめて書けますが、`-e` は直後にスクリプトが来るので最後に置きます。
+
+- cat: 実行環境
+  topic: -i（インプレース編集）
+  q: '`data.txt` の中身が `hello` の1行のとき、`ruby -i.bak -pe ''$_.upcase!'' data.txt` を実行した結果として正しいものを選択してください。'
+  choices:
+    - '`data.txt` が `HELLO` に書き換わり、元の内容が `data.txt.bak` に残る'
+    - '`data.txt.bak` に `HELLO` が書き出され、`data.txt` は変わらない'
+    - '標準出力に `HELLO` が出力され、ファイルは変わらない'
+    - '`.bak` という名前のファイルが作られる'
+  answer: [0]
+  verify: checks
+  setup: 'File.write("data.txt", "hello\n"); out = IO.popen(["ruby", "-i.bak", "-pe", "$_.upcase!", "data.txt"], &:read)'
+  checks:
+    - 'exit(File.read("data.txt") == "HELLO\n" && File.read("data.txt.bak") == "hello\n")'
+    - 'exit(File.exist?("data.txt.bak") && File.read("data.txt.bak") == "HELLO\n" && File.read("data.txt") == "hello\n")'
+    - 'exit(out == "HELLO\n" && File.read("data.txt") == "hello\n")'
+    - 'exit(File.exist?(".bak"))'
+  exp: |
+    `-i` は、引数のファイルを読みながら、出力でそのファイルを**書き換えます**（インプレース編集）。`-i.bak` のように拡張子を付けると、元のファイルを `data.txt.bak` として残します。
+
+    `-p` と組み合わせると、各行を加工してファイルに書き戻す、という sed のような使い方ができます。標準出力には何も出ません。
+
+- cat: 実行環境
+  topic: require と load
+  q: '`lib.rb` に `puts "loaded"` とだけ書かれているとき、次のコードを実行するとどうなりますか。'
+  code: |
+    p require "./lib"
+    p require "./lib"
+    p load "./lib.rb"
+  choices: ["loaded\ntrue\nfalse\nloaded\ntrue", "loaded\ntrue\nloaded\ntrue\nloaded\ntrue", "loaded\ntrue\nfalse\ntrue", "loaded\ntrue\nfalse\nfalse"]
+  answer: [0]
+  verify: checks
+  setup: 'File.write("lib.rb", "puts \"loaded\"\n"); File.write("main.rb", "p require \"./lib\"\np require \"./lib\"\np load \"./lib.rb\"\n"); out = IO.popen(["ruby", "main.rb"], &:read)'
+  checks:
+    - 'exit(out == "loaded\ntrue\nfalse\nloaded\ntrue\n")'
+    - 'exit(out == "loaded\ntrue\nloaded\ntrue\nloaded\ntrue\n")'
+    - 'exit(out == "loaded\ntrue\nfalse\ntrue\n")'
+    - 'exit(out == "loaded\ntrue\nfalse\nfalse\n")'
+  exp: |
+    - `require` … 同じファイルは**1回だけ**読み込みます。読み込んだら `true`、すでに読み込み済みなら何もせず `false` を返します。拡張子 `.rb` は省略できます。
+    - `load` … 呼ぶたびに**毎回**読み込んで実行します。拡張子は省略できません。
+
+    読み込んだファイルは `$LOADED_FEATURES`（`$"`）に記録されます。`require_relative` は、呼び出したファイルのある場所を基準にパスを解決する `require` です。
+
+- cat: 実行環境
+  topic: exit と at_exit
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    at_exit { puts "bye" }
+    begin
+      exit 2
+    rescue SystemExit => e
+      puts "status #{e.status}"
+    ensure
+      puts "ensure"
+    end
+    puts "after"
+  choices: ["status 2\nensure\nafter\nbye", "ensure\nbye", "status 2\nensure\nbye", "bye\nstatus 2\nensure\nafter"]
+  answer: [0]
+  verify: output
+  exp: |
+    `exit` は `SystemExit` 例外を発生させてプログラムを終わらせます。例外なので `rescue SystemExit` で捕まえることもでき、`status` で終了ステータスを取り出せます。捕まえたのでプログラムは続き、`after` まで出力されます。
+
+    `at_exit` に登録したブロックは、プログラムが終わる直前に実行されます。
+
+    なお `exit!` は例外を使わずに即座に終了するので、`ensure` も `at_exit` も実行されません。
+
+- cat: 実行環境
+  topic: abort と終了ステータス
+  q: '次のコードをファイルに保存して実行したとき、正しい説明を2つ選択してください。'
+  code: |
+    puts "start"
+    abort "failed"
+    puts "end"
+  choices:
+    - '`failed` は標準エラー出力に出力される'
+    - '終了ステータスは `1` になる'
+    - '`end` も出力される'
+    - '終了ステータスは `0` になる'
+  answer: [0, 1]
+  verify: checks
+  setup: 'require "open3"; File.write("a.rb", "puts \"start\"\nabort \"failed\"\nputs \"end\"\n"); out, err, st = Open3.capture3("ruby", "a.rb")'
+  checks:
+    - 'exit(err == "failed\n" && !out.include?("failed"))'
+    - 'exit(st.exitstatus == 1)'
+    - 'exit(out.include?("end"))'
+    - 'exit(st.exitstatus == 0)'
+  exp: |
+    `abort(メッセージ)` は、メッセージを**標準エラー出力**に出してから、終了ステータス `1` でプログラムを終了します。`exit(false)` と同じく失敗を表す終了です。
+
+    `exit` は既定で終了ステータス `0`（成功）、`exit(1)` や `exit(false)` で失敗を表せます。
+
+- cat: 実行環境
+  topic: __END__ と DATA
+  q: 'ファイルに次の内容を書いて実行するとどうなりますか。'
+  code: |
+    DATA.each_line do |line|
+      puts line.upcase
+    end
+    __END__
+    apple
+    banana
+  choices: ["APPLE\nBANANA", "apple\nbanana", '!`NameError` が発生する', '!何も出力されない']
+  answer: [0]
+  verify: output
+  exp: |
+    行頭の `__END__` から後ろはプログラムとして解釈されず、その内容を定数 `DATA`（`File` オブジェクト）から読めます。小さなデータをスクリプトに同梱するときに使います。
+
+    `DATA` が定義されるのは、`__END__` を含むファイルを**直接実行**したときだけです。
+
+- cat: 実行環境
+  topic: '$LOAD_PATH と $:'
+  q: '`$LOAD_PATH` について正しい説明を2つ選択してください。'
+  choices:
+    - '`$:` は `$LOAD_PATH` の別名である'
+    - '`ruby -I dir` で起動すると、`dir` が `$LOAD_PATH` に追加される'
+    - '`require_relative` は `$LOAD_PATH` だけを探す'
+    - '`$LOAD_PATH` は凍結されていて変更できない'
+  answer: [0, 1]
+  verify: checks
+  checks:
+    - 'exit($:.equal?($LOAD_PATH))'
+    - 'exit(IO.popen(["ruby", "-I", "zzdir", "-e", "print $LOAD_PATH.any? { _1.end_with?(\"zzdir\") }"], &:read) == "true")'
+    - 'Dir.mkdir("sub") unless Dir.exist?("sub"); File.write("sub/b.rb", "B = 1"); File.write("sub/a.rb", "require_relative \"b\"\np B"); exit(!system("ruby", "sub/a.rb", out: File::NULL, err: File::NULL))'
+    - 'exit($LOAD_PATH.frozen?)'
+  exp: |
+    `require` はライブラリを `$LOAD_PATH`（別名 `$:`）に並んだディレクトリから順に探します。`ruby -I dir` や環境変数 `RUBYLIB` で追加でき、プログラムの中で `$LOAD_PATH.unshift(dir)` のように書き換えることもできます。
+
+    `require_relative` は `$LOAD_PATH` を使わず、**そのファイル自身のある場所**を基準に探します。
+
+- cat: 実行環境
+  topic: ARGF と gets
+  q: '`printf "x\ny\n" | ruby -e ''p gets; p ARGF.read''` の出力として正しいものを選択してください。'
+  choices: ["\"x\\n\"\n\"y\\n\"", "\"x\"\n\"y\"", "\"x\\n\"\n\"x\\ny\\n\"", "\"x\\ny\\n\"\nnil"]
+  cm: true
+  answer: [0]
+  verify: checks
+  setup: 'out = IO.popen(["ruby", "-e", "p gets; p ARGF.read"], "r+") { |io| io.write("x\ny\n"); io.close_write; io.read }'
+  checks:
+    - "exit(out == %Q(\"x\\\\n\"\\n\"y\\\\n\"\\n))"
+    - "exit(out == %Q(\"x\"\\n\"y\"\\n))"
+    - "exit(out == %Q(\"x\\\\n\"\\n\"x\\\\ny\\\\n\"\\n))"
+    - "exit(out == %Q(\"x\\\\ny\\\\n\"\\nnil\\n))"
+  exp: |
+    引数なしの `gets`（`Kernel#gets`）と `ARGF` は、コマンドライン引数にファイル名があればそのファイルを、なければ標準入力を読みます。
+
+    `gets` は1行を改行付きで読み、続く `ARGF.read` はその続きを最後まで読みます。同じ入力をたどるので、2行目からになります。
+
+- cat: 文法
+  topic: break と next の値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r1 = [1, 2, 3].each { |x| break x * 10 if x == 2 }
+    r2 = [1, 2, 3].map { |x| next 0 if x == 2; x }
+    r3 = [1, 2].each { }
+    p r1, r2, r3
+  choices: ["20\n[1, 0, 3]\n[1, 2]", "nil\n[1, 0, 3]\n[1, 2]", "20\n[1, 3]\n[1, 2]", "20\n[1, 0, 3]\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `break 値` … ブロックを呼んだメソッド（`each`）をその場で終わらせ、その値がメソッドの戻り値になります。
+    - `next 値` … そのブロックの1回分だけを終わらせ、その値がブロックの値になります。`map` では要素の変換結果です。
+    - `each` は最後まで回ると**レシーバ自身**を返します。
+
+- cat: 文法
+  topic: loop と StopIteration
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    e = [1, 2].each
+    r = loop do
+      p e.next
+    end
+    p r
+  choices: ["1\n2\n[1, 2]", "1\n2\nnil", '!`StopIteration` が発生する', "1\n2\n2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `loop` は `StopIteration` 例外を捕まえて繰り返しを終えます。`e.next` は要素がなくなると `StopIteration` を発生させるので、`loop` が自然に終わります。
+
+    そのとき `loop` は `StopIteration#result`（列挙を終えたメソッドの戻り値。ここでは `each` が返す `[1, 2]`）を返します。
+
+- cat: 文法
+  topic: begin...end while
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    i = 10
+    begin
+      i += 1
+    end while i < 5
+    j = 10
+    j += 1 while j < 5
+    p i, j
+  choices: ["11\n10", "10\n10", "11\n11", "5\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    `begin ... end while 条件` は、**先に1回本体を実行してから**条件を調べます（do-while に相当）。そのため `i` は条件が偽でも1回足されて `11` です。
+
+    1つの式に付けた `式 while 条件` は通常の `while` と同じで、条件が最初から偽なら一度も実行しません。
+
+- cat: 文法
+  topic: begin/rescue/else/ensure の順番
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def run(n)
+      puts "body #{n}"
+      raise "x" if n == 1
+    rescue
+      puts "rescue"
+    else
+      puts "else"
+    ensure
+      puts "ensure"
+    end
+    run(1)
+    run(2)
+  choices: ["body 1\nrescue\nensure\nbody 2\nelse\nensure", "body 1\nrescue\nelse\nensure\nbody 2\nelse\nensure", "body 1\nrescue\nensure\nbody 2\nensure", "body 1\nensure\nrescue\nbody 2\nelse\nensure"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `rescue` … 本体で例外が発生したときだけ実行されます。
+    - `else` … 本体で例外が**発生しなかった**ときだけ実行されます。
+    - `ensure` … どちらの場合も最後に必ず実行されます。
+
+    書く順番も `rescue` → `else` → `ensure` と決まっています。
+
+- cat: 文法
+  topic: ensureの中のreturn
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def risky
+      raise "boom"
+    ensure
+      return "from ensure"
+    end
+    p risky
+  choices: ['"from ensure"', '!`RuntimeError` が発生する', 'nil', '"boom"']
+  answer: [0]
+  verify: output
+  exp: |
+    `ensure` の中で明示的に `return` すると、その値がメソッドの戻り値になり、発生中の例外は**捨てられます**。
+
+    例外が気づかないうちに消えてしまうので、`ensure` の中で `return` を書くのは避けるべき書き方です（Ruby も警告を出すことがあります）。
+
+- cat: 文法
+  topic: rescue で複数の例外
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    [nil, "a", 0].each do |v|
+      begin
+        v + 1
+        1 / v
+      rescue NoMethodError, TypeError => e
+        puts "type: #{e.class}"
+      rescue ZeroDivisionError
+        puts "zero"
+      end
+    end
+  choices: ["type: NoMethodError\ntype: TypeError\nzero", "type: NoMethodError\ntype: NoMethodError\nzero", "type: NoMethodError\nzero\nzero", "type: TypeError\ntype: TypeError\nzero"]
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue A, B => e` のように、1つの節に複数の例外クラスを並べられます。
+
+    - `nil + 1` … `nil` に `+` メソッドがないので `NoMethodError`
+    - `"a" + 1` … `String#+` に整数を渡したので `TypeError`
+    - `0 + 1` は成功し、`1 / 0` で `ZeroDivisionError`
+
+- cat: 文法
+  topic: Exception#cause
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    begin
+      begin
+        Integer("x")
+      rescue ArgumentError
+        raise KeyError, "wrapped"
+      end
+    rescue => e
+      p e.class
+      p e.cause.class
+    end
+  choices: ["KeyError\nArgumentError", "KeyError\nNilClass", "ArgumentError\nKeyError", "KeyError\nRuntimeError"]
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue` の中で別の例外を `raise` すると、新しい例外の `cause` に、そのとき処理していた元の例外が自動で記録されます。
+
+    例外を包み直しても元の原因をたどれるので、ログやデバッグで役立ちます。
+
+- cat: 文法
+  topic: raise の引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def try
+      yield
+    rescue => e
+      "#{e.class}: #{e.message}"
+    end
+    p try { raise "plain" }
+    p try { raise ArgumentError }
+    p try { raise IOError.new("io") }
+  choices: ["\"RuntimeError: plain\"\n\"ArgumentError: ArgumentError\"\n\"IOError: io\"", "\"StandardError: plain\"\n\"ArgumentError: \"\n\"IOError: io\"", "\"RuntimeError: plain\"\n\"ArgumentError: \"\n\"IOError: io\"", "\"RuntimeError: plain\"\n\"ArgumentError: ArgumentError\"\n\"IOError: IOError\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `raise "文字列"` … `RuntimeError` をそのメッセージで発生させます。
+    - `raise クラス` … メッセージなしで作るので、メッセージは**クラス名**になります。
+    - `raise 例外オブジェクト` … そのオブジェクトをそのまま発生させます。
+
+    `raise クラス, "メッセージ"` の形も使えます。
+
+- cat: 文法
+  topic: defined?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 1
+    p defined?(x)
+    p defined?(@y)
+    p defined?(puts)
+    p defined?(String)
+    p defined?(zzz)
+  choices: ["\"local-variable\"\nnil\n\"method\"\n\"constant\"\nnil", "\"local-variable\"\n\"instance-variable\"\n\"method\"\n\"constant\"\nnil", "\"local-variable\"\nnil\n\"method\"\n\"constant\"\n\"method\"", "true\nfalse\ntrue\ntrue\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `defined?(式)` は、式が定義されていれば種類を表す文字列を、未定義なら `nil` を返します。`defined?` はメソッドではなく演算子なので、未定義の名前を書いても `NameError` になりません。
+
+    - 代入されていないインスタンス変数 `@y` は `nil` です（代入済みなら `"instance-variable"`）。
+    - 未定義の名前 `zzz` は `nil` です。
+    - 主な戻り値は `"local-variable"`、`"instance-variable"`、`"method"`、`"constant"`、`"expression"`、`"yield"`、`"super"` などです。
+
+- cat: 文法
+  topic: block_given? と yield
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def wrap
+      return "no block" unless block_given?
+      "<" + yield + ">"
+    end
+    p wrap
+    p wrap { "hi" }
+    def bare = yield
+    bare
+  choices:
+    - '`"no block"` と `"<hi>"` が出力された後、`LocalJumpError` が発生する'
+    - '`"no block"` と `"<hi>"` が出力された後、`nil` が出力される'
+    - '`"<>"` と `"<hi>"` が出力された後、`LocalJumpError` が発生する'
+    - '1つ目の `wrap` で `LocalJumpError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"no block\"\n\"<hi>\"", error: LocalJumpError}
+  exp: |
+    `block_given?` は、そのメソッドにブロックが渡されたかを調べます。ブロックなしで `yield` すると `LocalJumpError`（`no block given (yield)`）が発生します。
+
+- cat: 文法
+  topic: superとブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Base
+      def each_item
+        [1, 2].each { |x| yield x }
+      end
+    end
+    class Child < Base
+      def each_item
+        super
+      end
+    end
+    Child.new.each_item { |x| print x * 10, " " }
+    puts
+  choices: ['10 20 ', '1 2 ', '!`LocalJumpError` が発生する', '!何も出力されない']
+  answer: [0]
+  verify: output
+  exp: |
+    `super` は、明示しなくても**呼び出し元に渡されたブロックも親のメソッドに引き継ぎます**（`super()` と書いた場合も同じです）。
+
+    ブロックを渡したくないときは `super(&nil)` と書きます。
+
+- cat: 文法
+  topic: ブロックローカル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = 10
+    y = 20
+    [1, 2].each do |i; y|
+      y = i
+      x += i
+    end
+    p x, y
+  choices: ["13\n20", "13\n2", "10\n20", "10\n2"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック引数の後ろに `; 変数名` と書くと、そのブロックだけのローカル変数（ブロックローカル変数）になります。外側に同じ名前の変数があっても、別の変数として扱われます。
+
+    `x` は普通に外側の変数を参照するので、ブロックの中の変更が外にも残ります。
+
+- cat: 文法
+  topic: def とローカル変数のスコープ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    count = 0
+    increment = -> { count += 1 }
+    increment.call
+    define_method(:show) { count }
+    def plain = count
+    p show
+    p plain
+  choices:
+    - '`1` が出力された後、`NameError` が発生する'
+    - '`1` と `1` が出力される'
+    - '`0` が出力された後、`NameError` が発生する'
+    - '`define_method` の行で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "1", error: NameError}
+  exp: |
+    `def` は新しいスコープを作るので、外側のローカル変数 `count` は見えません。`plain` の中の `count` はメソッド呼び出しとして探され、見つからず `NameError`（`undefined local variable or method`）です。
+
+    ブロック（`->`、`define_method` のブロック）はクロージャなので、外側の `count` を読み書きできます。
+
+- cat: 文法
+  topic: '||= と &&='
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = nil
+    a ||= 1
+    a ||= 2
+    b = false
+    b &&= 3
+    c = 4
+    c &&= c * 10
+    h = {}
+    h[:k] ||= []
+    h[:k] << 5
+    p a, b, c, h
+  choices: ["1\nfalse\n40\n{:k=>[5]}", "2\nfalse\n40\n{:k=>[5]}", "1\n3\n40\n{:k=>[5]}", "1\nfalse\n4\n{}"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `a ||= x` … `a || (a = x)` と同じで、`a` が `nil` か `false` のときだけ代入します。2回目は `a` が `1` なので代入されません。
+    - `a &&= x` … `a && (a = x)` と同じで、`a` が真のときだけ代入します。
+
+    ハッシュの値を初期化しながら使う `h[:k] ||= []` は定番の書き方です。
+
+- cat: 文法
+  topic: 複数の戻り値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def minmax(a) = return a.min, a.max
+    r = minmax([3, 1, 2])
+    lo, hi = minmax([3, 1, 2])
+    p r, lo, hi
+  choices: ["[1, 3]\n1\n3", "1\n1\n3", '!文法エラーが発生する', "[1, 3]\n[1, 3]\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `return a, b` のように複数の値を返すと、配列 `[a, b]` が返ります。受け取る側で多重代入すれば、別々の変数に分けられます。
+
+    1行のメソッド定義 `def name(引数) = 式` の本体にも `return` を書けます。
+
+- cat: 文法
+  topic: ハッシュの省略記法
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    name = "Ann"
+    age = 20
+    def show(name:, age:) = "#{name}(#{age})"
+    h = {name:, age:}
+    p h
+    p show(name:, age:)
+  choices: ["{:name=>\"Ann\", :age=>20}\n\"Ann(20)\"", '!文法エラーが発生する', "{:name=>nil, :age=>nil}\n\"(\"", "{\"name\"=>\"Ann\", \"age\"=>20}\n\"Ann(20)\""]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby 3.1 から、ハッシュリテラルやキーワード引数で `{name:}` と書くと `{name: name}` の省略形になります。同じ名前のローカル変数（またはメソッド）の値が使われます。
+
+    ※ ハッシュの表示は Ruby 3.4 から `{name: "Ann", age: 20}` の形に変わりました。
+
+- cat: 文法
+  topic: 無名のブロック引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def each_twice(&)
+      [1, 2].each(&)
+      [1, 2].each(&)
+    end
+    sum = 0
+    each_twice { sum += _1 }
+    p sum
+  choices: ['6', '3', '!文法エラーが発生する', '0']
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby 3.1 から、ブロック引数を名前なしで `&` と書き、そのまま別のメソッドに `&` で渡せるようになりました。`def m(&block) ... each(&block)` と同じ意味です。
+
+    ブロックは2回の `each` で合計4回呼ばれ、`1 + 2 + 1 + 2 = 6` です。
+
+- cat: 文法
+  topic: 1行メソッド定義
+  q: 1行のメソッド定義（endless method）として**文法エラーになる**ものを選択してください。
+  choices:
+    - 'def square(x) = x * x'
+    - 'def hello = "hi"'
+    - 'def name=(v) = @name = v'
+    - 'def self.zero = 0'
+  cm: true
+  answer: [2]
+  verify: checks
+  checks:
+    - 'begin; eval("def square(x) = x * x"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def hello = \"hi\""); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def name=(v) = @name = v"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def self.zero = 0"); exit(false); rescue SyntaxError; exit(true); end'
+  exp: |
+    Ruby 3.0 から、`def メソッド名(引数) = 式` の形で `end` のないメソッドを定義できます。引数なしならかっこも省略できます。
+
+    ただし `name=` のような**セッターメソッド**は、`=` が紛らわしいため1行定義が禁止されています。
+
+- cat: 文法
+  topic: パターンマッチ（代替パターンと残り）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def kind(v)
+      case v
+      in 0 | 1 then "bit"
+      in Integer | Float => n if n.negative? then "negative"
+      in [first, *rest] then "list #{first} +#{rest.size}"
+      in String then "str"
+      else "other"
+      end
+    end
+    p kind(1), kind(-2.5), kind([7, 8, 9]), kind(:s)
+  choices: ["\"bit\"\n\"negative\"\n\"list 7 +2\"\n\"other\"", "\"bit\"\n\"other\"\n\"list 7 +2\"\n\"str\"", "\"bit\"\n\"negative\"\n\"list 7 +3\"\n\"other\"", "\"other\"\n\"negative\"\n\"list 7 +2\"\n\"other\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `0 | 1` … 代替パターン。どれかに一致すれば成功です。
+    - `Integer | Float => n` … クラスで照合（`===`）し、一致した値を `n` に束縛します。ガード節 `if` で条件を追加しています。
+    - `[first, *rest]` … 先頭を `first` に、残りを配列 `rest` に取り出します。
+    - シンボル `:s` は `String` ではないので `else` です。
+
+    `in 条件 then 式` のように、`then` で1行に書くこともできます。
+
+- cat: 文法
+  topic: 右代入の失敗
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    config = {port: 80}
+    begin
+      config => {host:}
+    rescue NoMatchingPatternKeyError => e
+      p e.key
+    end
+    ok = (config in {port: 1..1024})
+    p ok
+  choices: [":host\ntrue", "nil\ntrue", ":host\nfalse", '!`NoMatchingPatternError` が発生して停止する']
+  answer: [0]
+  verify: output
+  exp: |
+    `式 => パターン` は、一致しないと例外を発生させます。ハッシュパターンでキーが見つからないときは `NoMatchingPatternKeyError`（`NoMatchingPatternError` のサブクラス）で、`key` で足りないキーを取り出せます。
+
+    パターンには範囲も使えます。`80` は `1..1024` に含まれるので `true` です。`in` は代入より優先順位が低いので、結果を変数に入れるときはかっこで囲みます。
+
+- cat: 文法
+  topic: case と ===
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def check(v)
+      case v
+      when ->(x) { x.respond_to?(:each) } then "enumerable"
+      when /\A\d+\z/ then "digits #{$~[0]}"
+      when Numeric then "number"
+      when nil then "nil"
+      end
+    end
+    p check([1]), check("42"), check(3.0), check(nil), check(:x)
+  choices: ["\"enumerable\"\n\"digits 42\"\n\"number\"\n\"nil\"\nnil", "\"enumerable\"\n\"digits 42\"\n\"number\"\n\"nil\"\n\"nil\"", "nil\n\"digits 42\"\n\"number\"\n\"nil\"\nnil", "\"enumerable\"\n\"enumerable\"\n\"number\"\n\"nil\"\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `case` の `when` は `when の値 === 対象` で比べます。`===` の意味は値の種類によって違います。
+
+    - `Proc#===` … その Proc を呼んだ結果
+    - `Regexp#===` … マッチするか（マッチ情報は `$~` に入ります）
+    - `Class#===` … そのクラス（またはサブクラス）のインスタンスか
+    - `nil` などの値 … `==`
+
+    どれにも一致せず `else` もないと、`case` 式の値は `nil` です。
+
+- cat: 文法
+  topic: 演算子メソッドの定義
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Vec
+      attr_reader :x, :y
+      def initialize(x, y) = (@x, @y = x, y)
+      def +(o) = Vec.new(x + o.x, y + o.y)
+      def -@ = Vec.new(-x, -y)
+      def [](i) = i.zero? ? x : y
+      def ==(o) = o.is_a?(Vec) && x == o.x && y == o.y
+      def to_s = "(#{x}, #{y})"
+    end
+    a = Vec.new(1, 2)
+    puts a + Vec.new(3, 4)
+    puts(-a)
+    p a[1], a == Vec.new(1, 2), a != Vec.new(1, 2)
+  choices: ["(4, 6)\n(-1, -2)\n2\ntrue\nfalse", "(4, 6)\n(-1, -2)\n2\ntrue\ntrue", "(4, 6)\n(1, 2)\n2\ntrue\nfalse", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    多くの演算子はメソッドとして定義できます。
+
+    - 2項演算子 `+`、`-`、`*`、`==`、`<=>` など
+    - 単項のマイナス・プラスは `-@`・`+@` という名前で定義します。
+    - 添字の `[]` と `[]=`
+
+    `!=` は `==` の結果を反転して自動的に使われるので、`==` を定義すれば `!=` も期待どおり動きます。
+
+- cat: 文法
+  topic: coerce
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Meter
+      attr_reader :v
+      def initialize(v) = @v = v
+      def *(n) = Meter.new(v * n)
+      def coerce(n) = [self, n]
+      def inspect = "#{v}m"
+    end
+    p Meter.new(2) * 3
+    p 3 * Meter.new(2)
+  choices: ["6m\n6m", "6m\n!`TypeError` が発生する", '!1行目で `TypeError` が発生する', "6m\n6"]
+  answer: [0]
+  verify: output
+  exp: |
+    `3 * Meter.new(2)` は `Integer#*` が呼ばれますが、`Integer` は `Meter` との掛け算を知りません。このとき Ruby は相手の `coerce(3)` を呼び、返された `[a, b]` で `a * b` を計算し直します。
+
+    ここでは `[self, 3]` を返すので `Meter.new(2) * 3` が呼ばれ、`6m` になります。`coerce` を定義しないと `TypeError` です。
+
+- cat: 文法
+  topic: 文字列リテラルの種類
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    n = 1
+    p %w[a#{n} b]
+    p %W[a#{n} b]
+    p %i[x y]
+    p %q(it's #{n})
+    p ?a + ?b
+  choices: ["[\"a\\#{n}\", \"b\"]\n[\"a1\", \"b\"]\n[:x, :y]\n\"it's \\#{n}\"\n\"ab\"", "[\"a1\", \"b\"]\n[\"a1\", \"b\"]\n[:x, :y]\n\"it's 1\"\n\"ab\"", "[\"a\\#{n}\", \"b\"]\n[\"a1\", \"b\"]\n[\"x\", \"y\"]\n\"it's \\#{n}\"\n\"ab\"", "[\"a\\#{n}\", \"b\"]\n[\"a1\", \"b\"]\n[:x, :y]\n\"it's 1\"\n\"ab\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `%w[]` は文字列の配列で、式展開しません（シングルクォート相当）。`%W[]` は式展開します。
+    - `%i[]` はシンボルの配列です（`%I[]` は式展開あり）。
+    - `%q()` はシングルクォート、`%Q()`（または `%()`）はダブルクォートの文字列です。
+    - `?a` は1文字の文字列 `"a"` です。
+
+    `p` は `#{` を含む文字列を表示するとき、式展開と区別するため `\#{` とエスケープして表示します。
+
+- cat: 文法
+  topic: 整数の除算と剰余
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p(-7 / 2)
+    p(-7 % 3)
+    p 7.remainder(-3)
+    p(-7.fdiv(2).round)
+  choices: ["-4\n2\n1\n-4", "-3\n-1\n1\n-3", "-4\n-1\n-1\n-4", "-3\n2\n1\n-4"]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby の整数の `/` は**負の無限大の方向に切り捨て**ます。`-7 / 2` は `-3.5` を切り捨てて `-4` です。
+
+    `%`（`modulo`）は `a == (a / b) * b + a % b` を満たすように決まるので、結果は**割る数と同じ符号**です（`-7 % 3` は `2`）。`remainder` は割られる数と同じ符号の余りを返します（`7.remainder(-3)` は `1`）。
+
+    `-3.5.round` は、0.5 を 0 から遠い方に丸めるので `-4` です。
+
+- cat: 文法
+  topic: BEGIN と END
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    puts "main"
+    END { puts "END" }
+    at_exit { puts "at_exit" }
+    BEGIN { puts "BEGIN" }
+  choices: ["BEGIN\nmain\nat_exit\nEND", "BEGIN\nmain\nEND\nat_exit", "main\nBEGIN\nEND\nat_exit", "BEGIN\nmain\nEND"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `BEGIN { }` … ファイルのどこに書いても、プログラムの最初に実行されます。
+    - `END { }` と `at_exit { }` … プログラムの終了時に実行されます。**登録したのと逆の順番**で実行されるので、後から登録した `at_exit` が先です。
+
+    `END` は実行されたときに1回だけ登録されます（ループの中でも1回だけ）。
+
+- cat: 文法
+  topic: 条件式としての範囲と正規表現
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "2024-05-06"
+    if s =~ /(\d+)-(\d+)/
+      p [$1, $2, $~.post_match]
+    end
+    p $1
+    "x" =~ /y/
+    p $1
+  choices: ["[\"2024\", \"05\", \"-06\"]\n\"2024\"\nnil", "[\"2024\", \"05\", \"-06\"]\nnil\nnil", "[\"2024\", \"05\", \"06\"]\n\"2024\"\nnil", "[\"2024\", \"05\", \"-06\"]\n\"2024\"\n\"2024\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `=~` でマッチすると、`$~`（`MatchData`）と `$1`, `$2`, … が設定されます。これらはそのメソッド（スコープ）の中で、**次にマッチを試すまで**残ります。`if` の外でも参照できます。
+
+    マッチに失敗すると `$~` は `nil` になり、`$1` も `nil` になります。
+
+- cat: 文法
+  topic: メソッドの戻り値（each / times / map）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = 3.times { |i| i * 2 }
+    b = [1, 2].each_with_index { }
+    c = {x: 1}.each { }
+    d = 1.upto(3) { }
+    p a, b, c, d
+  choices: ["3\n[1, 2]\n{:x=>1}\n1", "[0, 2, 4]\n[1, 2]\n{:x=>1}\n[1, 2, 3]", "nil\nnil\nnil\nnil", "3\n[[1, 0], [2, 1]]\n{:x=>1}\n3"]
+  answer: [0]
+  verify: output
+  exp: |
+    繰り返しのためのメソッドの多くは、ブロックの値を集めずに**レシーバ自身**を返します。
+
+    - `3.times { }` は `3`、`1.upto(3) { }` は `1`
+    - `each` や `each_with_index` は配列・ハッシュ自身
+
+    ブロックの値を集めたいときは `map` を使います（`3.times.map { |i| i * 2 }` は `[0, 2, 4]`）。
+
+- cat: 文法
+  topic: 可変長引数とキーワード引数の受け取り
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def show(*args, **opts, &blk)
+      [args, opts, blk&.call]
+    end
+    p show(1, 2, a: 3) { :b }
+    p show({a: 1})
+    p show(**{})
+  choices: ["[[1, 2], {:a=>3}, :b]\n[[{:a=>1}], {}, nil]\n[[], {}, nil]", "[[1, 2], {:a=>3}, :b]\n[[], {:a=>1}, nil]\n[[], {}, nil]", "[[1, 2, {:a=>3}], {}, :b]\n[[{:a=>1}], {}, nil]\n[[], {}, nil]", "[[1, 2], {:a=>3}, :b]\n[[{:a=>1}], {}, nil]\n[[{}], {}, nil]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `*args` … 位置引数をすべて配列で受け取ります。
+    - `**opts` … キーワード引数をすべてハッシュで受け取ります。
+    - `&blk` … ブロックを `Proc` で受け取ります（なければ `nil`）。
+
+    Ruby 3.0 からは、`{a: 1}` のように**波かっこで書いたハッシュは位置引数**として扱われ、`**opts` には入りません。空のハッシュを `**{}` で展開すると、何も渡さないのと同じです。
+
+- cat: 文法
+  topic: メソッド呼び出しのかっこと優先順位
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def twice(x) = x * 2
+    a = twice 1 + 2
+    b = twice(1) + 2
+    c = [1, 2].map do |x| x * 10 end
+    p a, b, c
+  choices: ["6\n4\n[10, 20]", "4\n4\n[10, 20]", "6\n4\n#<Enumerator: [1, 2]:map>", "6\n6\n[10, 20]"]
+  answer: [0]
+  verify: output
+  exp: |
+    かっこを省略すると、残りの式全体が引数になります。`twice 1 + 2` は `twice(1 + 2)` で `6` です。
+
+    `do ... end` は `{ }` より結合が弱いですが、`c = [1, 2].map do ... end` の場合は `map` にブロックが渡されます。`p [1, 2].map do ... end` のように**メソッドの引数の中**で使うと、`do` のブロックは外側の `p` に渡されてしまう点に注意しましょう。
+
+- cat: 文法
+  topic: do...end と { } の結合
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def show(v)
+      block_given? ? "#{v.inspect} + block" : v.inspect
+    end
+    puts show [1, 2].map { |x| x * 2 }
+    puts show [1, 2].map do |x| x * 2 end
+  choices: ["[2, 4]\n#<Enumerator: [1, 2]:map>", "[2, 4]\n#<Enumerator: [1, 2]:map> + block", "[2, 4]\n[2, 4]", "[2, 4]\n[2, 4] + block"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `{ }` は直前のメソッド（`map`）に強く結び付きます。
+    - `do ... end` は結合が弱く、かっこを省略して呼んでいる**いちばん外側のメソッド**（ここでは `puts`）に渡されます。
+
+    2行目は `puts(show([1, 2].map)) do ... end` と解釈されます。`map` はブロックなしなので `Enumerator` を返し、`show` にもブロックは渡りません。`puts` はブロックを使わないので、ブロックは無視されます。
+
+    かっこを付けて `show([1, 2].map do ... end)` のように書けば、意図どおり `map` に渡せます。
+
+- cat: 文法
+  topic: 定数の参照と class_eval
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    X = "top"
+    class Foo
+      X = "foo"
+    end
+    p Foo.class_eval { X }
+    p Foo.class_eval("X")
+    p Foo::X
+  choices: ["\"top\"\n\"foo\"\n\"foo\"", "\"foo\"\n\"foo\"\n\"foo\"", "\"top\"\n\"top\"\n\"foo\"", "\"foo\"\n\"top\"\n\"foo\""]
+  answer: [0]
+  verify: output
+  exp: |
+    定数はソースコードの書かれた場所（レキシカルスコープ）から探されます。
+
+    - ブロック版の `class_eval { X }` … ブロックはトップレベルに書かれているので、トップレベルの `X`（`"top"`）が見つかります。`self` は `Foo` に変わっても、定数の探索範囲は変わりません。
+    - 文字列版の `class_eval("X")` … 文字列は `Foo` の中で書かれたものとして解釈されるので、`Foo::X` です。
+
+- cat: 文法
+  topic: 文字列の凍結とchilled string
+  q: 次のコードを実行するとどうなりますか（マジックコメントはなし）。
+  code: |
+    a = "abc"
+    b = :sym.to_s
+    c = 1.to_s
+    p a.frozen?, :sym.frozen?, 1.frozen?, nil.frozen?
+    p "x".equal?("x")
+  choices: ["false\ntrue\ntrue\ntrue\nfalse", "true\ntrue\ntrue\ntrue\ntrue", "false\nfalse\nfalse\nfalse\nfalse", "false\ntrue\ntrue\nfalse\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    マジックコメントがなければ、文字列リテラルは評価のたびに**新しい、凍結されていない**文字列を作ります。そのため同じ内容でも `equal?` は `false` です。
+
+    シンボル・整数・`nil`・`true`・`false` は最初から凍結されています（変更できない値）。
+
+    ※ Ruby 3.4 からは、文字列リテラルを変更すると警告が出る「chilled string」になりましたが、`frozen?` は `false` のままです。
+
+- cat: 文法
+  topic: 再帰とデフォルト引数の評価
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def add(item, list = [])
+      list << item
+    end
+    p add(1)
+    p add(2)
+    def stamp(t = (@n = (@n || 0) + 1)) = t
+    p stamp, stamp, stamp(10), stamp
+  choices: ["[1]\n[2]\n1\n2\n10\n3", "[1]\n[1, 2]\n1\n2\n10\n3", "[1]\n[2]\n1\n1\n10\n1", "[1]\n[2]\n1\n2\n10\n4"]
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby の既定値の式は、**呼び出しのたびに評価されます**。そのため `list = []` は毎回新しい空配列になり、Python のように前回の配列が残ることはありません。
+
+    `stamp` の既定値も呼ぶたびに評価されて `@n` が増えます。引数を渡したとき（`stamp(10)`）は既定値の式は評価されないので、`@n` は増えません。

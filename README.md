@@ -5,7 +5,7 @@
 | 試験 | ページ | 問題 |
 |---|---|---|
 | Ruby技術者認定試験 Silver（version 3 / Ruby 3.1） | `/ruby-silver/` | オリジナル 240 問 + 公式模擬問題 50 問 |
-| Ruby技術者認定試験 Gold（version 3 / Ruby 3.1） | `/ruby-gold/` | オリジナル 92 問 + 公式模擬問題 50 問 |
+| Ruby技術者認定試験 Gold（version 3 / Ruby 3.1） | `/ruby-gold/` | オリジナル 240 問 + 公式模擬問題 50 問 |
 
 公式模擬問題は [Ruby Association のサンプル問題](https://github.com/ruby-association/prep-test/tree/version3) をもとに誤記を修正したもので、解説はこのサイトの書き下ろしです。
 修正点は [docs/official-prep-test.md](docs/official-prep-test.md)（Silver）と [docs/official-prep-test-gold.md](docs/official-prep-test-gold.md)（Gold）にまとめています。

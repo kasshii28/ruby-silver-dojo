@@ -43,7 +43,7 @@ export const EXAMS: readonly Exam[] = [
     name: 'Ruby Gold',
     fullName: 'Ruby技術者認定試験 Gold',
     version: 'version 3（Ruby 3.1）',
-    files: ['g_syntax', 'g_oop', 'g_lib', 'g_stdlib', 'g_official'],
+    files: ['g_syntax', 'g_oop', 'g_lib', 'g_stdlib', 'g_official', 'g_syntax2', 'g_oop2', 'g_lib2', 'g_stdlib2'],
     cats: ['文法', 'オブジェクト指向', '組み込みライブラリ', '標準添付ライブラリ', '実行環境'],
     storage: 'rg',
     officialSource: 'https://github.com/ruby-association/prep-test/blob/version3/gold_ja.md',

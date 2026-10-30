@@ -1,0 +1,755 @@
+# 組み込みライブラリ（追加分）
+- cat: 組み込みライブラリ
+  topic: Enumerator.produce
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Enumerator.produce(1) { _1 * 2 }.take(5)
+    p Enumerator.produce([0, 1]) { |a, b| [b, a + b] }.take(5).map(&:first)
+  choices: ["[1, 2, 4, 8, 16]\n[0, 1, 1, 2, 3]", "[2, 4, 8, 16, 32]\n[0, 1, 1, 2, 3]", "[1, 2, 4, 8, 16]\n[1, 1, 2, 3, 5]", '!無限ループになる']
+  answer: [0]
+  verify: output
+  exp: |
+    `Enumerator.produce(初期値) { |前の値| 次の値 }` は、前の値から次の値を作り続ける無限の `Enumerator` です（Ruby 2.7 から）。最初の要素は初期値そのものです。
+
+    `take` で必要な数だけ取り出せば止まります。2つ目は `[a, b]` の組を次々に作ってフィボナッチ数列を得ています。
+
+- cat: 組み込みライブラリ
+  topic: Enumerator#size
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2, 3].each_slice(2).size
+    p [1, 2, 3].map.size
+    p loop.size
+    p [1, 2, 3].select.with_index.size
+  choices: ["2\n3\nInfinity\n3", "3\n3\nnil\n3", "2\n3\nnil\nnil", "2\n3\nInfinity\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Enumerator#size` は、要素を実際に列挙せずに要素数を計算して返します。
+
+    - `each_slice(2)` は 3 個を 2 個ずつに分けるので `2` です。
+    - ブロックなしの `loop` は終わらない列挙なので `Float::INFINITY` です。
+    - 計算できない場合は `nil` を返します（`Enumerator.new { }` など）。
+
+- cat: 組み込みライブラリ
+  topic: Lazy の評価順
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    r = (1..4).lazy
+              .map { |x| print "m#{x} "; x * 2 }
+              .select { |x| print "s#{x} "; x > 2 }
+              .first(1)
+    puts
+    p r
+  choices: ["m1 s2 m2 s4 \n[4]", "m1 m2 m3 m4 s2 s4 s6 s8 \n[4]", "m1 s2 m2 s4 m3 s6 m4 s8 \n[4]", "m1 s2 \n[2]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `lazy` を付けると、`map` → `select` を**1要素ずつ**通して処理します。`first(1)` で1つ見つかった時点で止まるので、`3` と `4` は処理されません。
+
+    `lazy` なしだと、`map` がすべての要素を処理して配列を作ってから `select` が動くので、`m1 m2 m3 m4 s2 s4 s6 s8` の順になります。
+
+- cat: 組み込みライブラリ
+  topic: Lazy#eager と force
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    lz = [3, 1, 2].lazy.map { _1 * 10 }
+    p lz.class
+    p lz.eager.class
+    p lz.force
+    p lz.sort
+  choices: ["Enumerator::Lazy\nEnumerator\n[30, 10, 20]\n[10, 20, 30]", "Enumerator::Lazy\nEnumerator::Lazy\n[30, 10, 20]\n[10, 20, 30]", "Enumerator::Lazy\nArray\n[30, 10, 20]\n[10, 20, 30]", "Enumerator\nEnumerator\n[30, 10, 20]\n[10, 20, 30]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `eager` … 遅延評価をやめ、通常の `Enumerator` に戻します。以降の `map` などは配列を返すようになります。
+    - `force`（`to_a`）… その場で評価して配列にします。
+    - `sort` は `Lazy` で遅延版が定義されていないメソッドなので、呼んだ時点で評価されて配列を返します。
+
+- cat: 組み込みライブラリ
+  topic: Array.new の初期値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = Array.new(2, [])
+    a[0] << 1
+    b = Array.new(2) { [] }
+    b[0] << 1
+    c = Array.new(3) { |i| i * i }
+    p a, b, c
+  choices: ["[[1], [1]]\n[[1], []]\n[0, 1, 4]", "[[1], []]\n[[1], []]\n[0, 1, 4]", "[[1], [1]]\n[[1], [1]]\n[0, 1, 4]", "[[1], [1]]\n[[1], []]\n[1, 4, 9]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Array.new(n, obj)` は、**同じオブジェクト** `obj` を n 個並べます。`a[0]` と `a[1]` は同じ配列なので、片方への追加が両方に見えます。
+
+    ブロックを渡すと、要素ごとにブロックが呼ばれ、別々のオブジェクトが作られます。ブロック引数は添字です。
+
+- cat: 組み込みライブラリ
+  topic: take_while / drop_while / chunk_while
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [1, 2, 4, 3, 5]
+    p a.take_while { _1 < 4 }
+    p a.drop_while { _1 < 4 }
+    p a.chunk_while { |x, y| y > x }.to_a
+  choices: ["[1, 2]\n[4, 3, 5]\n[[1, 2, 4], [3, 5]]", "[1, 2, 3]\n[4, 5]\n[[1, 2, 4], [3, 5]]", "[1, 2]\n[4, 3, 5]\n[[1, 2], [4], [3, 5]]", "[1, 2]\n[3, 5]\n[[1, 2, 4], [3, 5]]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `take_while` … 先頭から、条件が真の間だけ取り出します。偽になった時点で止まるので、あとにある `3` は含まれません。
+    - `drop_while` … 条件が真の間を捨て、残りを返します。
+    - `chunk_while` … 隣り合う2つで条件が真の間はまとめ、偽になったところで区切ります。
+
+- cat: 組み込みライブラリ
+  topic: rotate / cycle / bsearch
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [1, 2, 3]
+    p a.rotate, a.rotate(-1)
+    p a.cycle.first(5)
+    p [1, 3, 5, 7].bsearch { _1 >= 4 }
+  choices: ["[2, 3, 1]\n[3, 1, 2]\n[1, 2, 3, 1, 2]\n5", "[3, 1, 2]\n[2, 3, 1]\n[1, 2, 3, 1, 2]\n5", "[2, 3, 1]\n[3, 1, 2]\n[1, 2, 3]\n5", "[2, 3, 1]\n[3, 1, 2]\n[1, 2, 3, 1, 2]\n4"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `rotate(n)` … 先頭の n 個を末尾に回した**新しい配列**を返します。負の数なら逆向きです。
+    - `cycle` … 要素を無限に繰り返す `Enumerator` です。`first(5)` で5つだけ取り出せます。
+    - `bsearch` … **ソート済み**の配列を二分探索します。ブロックが真になる最初の要素を返します。
+
+- cat: 組み込みライブラリ
+  topic: transpose / combination / permutation
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [[1, 2], [3, 4], [5, 6]].transpose
+    p [1, 2, 3, 4].combination(2).count
+    p [1, 2, 3].permutation(2).first(3)
+    p [[1, 2], [3]].transpose rescue p $!.class
+  choices: ["[[1, 3, 5], [2, 4, 6]]\n6\n[[1, 2], [1, 3], [2, 1]]\nIndexError", "[[1, 3, 5], [2, 4, 6]]\n12\n[[1, 2], [1, 3], [2, 1]]\nIndexError", "[[1, 2, 3], [4, 5, 6]]\n6\n[[1, 2], [1, 3], [2, 3]]\nIndexError", "[[1, 3, 5], [2, 4, 6]]\n6\n[[1, 2], [1, 3], [2, 1]]\n[[1, 3], [2, nil]]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `transpose` … 行と列を入れ替えます。各要素の長さがそろっていないと `IndexError` です。
+    - `combination(n)` … n 個を選ぶ組み合わせ（順序を区別しない）。4個から2個なら 6 通りです。
+    - `permutation(n)` … n 個を並べる順列（順序を区別する）。
+
+- cat: 組み込みライブラリ
+  topic: max(n) と sort のブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [5, 3, 9, 1]
+    p a.max(2)
+    p a.min_by(2) { -_1 }
+    p a.sort { |x, y| y <=> x }
+    p a.sort.reverse == a.sort_by { -_1 }
+  choices: ["[9, 5]\n[9, 5]\n[9, 5, 3, 1]\ntrue", "9\n9\n[9, 5, 3, 1]\ntrue", "[9, 5]\n[1, 3]\n[9, 5, 3, 1]\ntrue", "[5, 9]\n[9, 5]\n[1, 3, 5, 9]\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `max(n)` / `min(n)` … 大きい（小さい）順に n 個を配列で返します。
+    - `min_by(n) { }` … ブロックの値が小さい順に n 個。`-_1` が小さい順なので、元の値が大きい順です。
+    - `sort { |x, y| y <=> x }` … ブロックで比較方法を決められます。`x` と `y` を逆にすると降順です。
+
+- cat: 組み込みライブラリ
+  topic: inject / reduce の初期値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [1, 2, 3].inject(10) { |sum, x| sum + x }
+    p [1, 2, 3].reduce(:*)
+    p [].inject(:+)
+    p [].sum
+    p %w[a b].inject { |s, x| s + x }
+  choices: ["16\n6\nnil\n0\n\"ab\"", "16\n6\n0\n0\n\"ab\"", "6\n6\nnil\n0\n\"ab\"", "16\n6\nnil\nnil\n\"ab\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `inject(初期値) { |累積, 要素| }` … 初期値から始めて、ブロックの値を次の累積値にしていきます。
+    - 初期値を省略すると先頭の要素が初期値になります。空の配列では `nil` を返します。
+    - `sum` は初期値が `0` なので、空の配列でも `0` です。文字列を `sum` で連結するには `sum("")` と初期値を渡します。
+
+- cat: 組み込みライブラリ
+  topic: Float の足し算と sum
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = [0.1] * 10
+    p a.sum
+    p a.inject(:+)
+    p a.sum == 1.0
+  choices: ["1.0\n0.9999999999999999\ntrue", "0.9999999999999999\n0.9999999999999999\nfalse", "1.0\n1.0\ntrue", "1\n1\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `0.1` を2進数で正確に表せないため、普通に10回足すと誤差がたまって `0.9999999999999999` になります。
+
+    `Array#sum`（と `Enumerable#sum`）は、浮動小数点数の誤差を小さくする補正（Kahan-Babuska の加算）を行うので、`1.0` になります。
+
+- cat: 組み込みライブラリ
+  topic: Float の丸め
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 2.5.round, 3.5.round
+    p 2.5.round(half: :even)
+    p 12345.round(-2)
+    p 1.99.floor(1), -1.5.ceil
+  choices: ["3\n4\n2\n12300\n1.9\n-1", "2\n4\n2\n12300\n1.9\n-1", "3\n4\n2\n12345\n1.9\n-2", "3\n3\n2\n12300\n2.0\n-1"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `round` は既定で**四捨五入**（0.5 は 0 から遠い方へ）です。`half: :even` を付けると偶数への丸め（銀行丸め）、`half: :down` で切り捨て側になります。
+    - 負の桁数を渡すと、整数の上の桁で丸めます（`-2` は百の位）。
+    - `floor(1)` は小数第1位で切り捨て、`ceil` は大きい方の整数（`-1.5` なら `-1`）です。
+
+- cat: 組み込みライブラリ
+  topic: 数値と文字列の基数変換
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 255.to_s(2)
+    p "ff".to_i(16)
+    p "0b11".to_i(0)
+    p "z".to_i(36)
+    p Integer.sqrt(17), 10.bit_length
+  choices: ["\"11111111\"\n255\n3\n35\n4\n4", "\"11111111\"\n255\n0\n35\n4\n4", "\"ff\"\n255\n3\n35\n4\n4", "\"11111111\"\n255\n3\n35\n4.123105625617661\n4"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Integer#to_s(基数)` / `String#to_i(基数)` で 2〜36 進数を相互に変換できます。
+    - `to_i(0)` は接頭辞（`0b`、`0o`、`0x`）から基数を判断します。
+    - `Integer.sqrt` は整数の平方根（切り捨て）、`bit_length` は2進数での桁数です。
+
+- cat: 組み込みライブラリ
+  topic: Float の特殊な値
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1 / 0.0
+    p (0 / 0.0).nan?
+    p Float::NAN == Float::NAN
+    p 1.0.infinite?, (-1 / 0.0).infinite?
+    1 / 0
+  choices:
+    - '5行出力された後、`ZeroDivisionError` が発生する'
+    - '1行目で `ZeroDivisionError` が発生する'
+    - '5行出力され、最後の行は `Infinity` を返す'
+    - '3行出力された後、`ZeroDivisionError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "Infinity\ntrue\nfalse\nnil\n-1", error: ZeroDivisionError}
+  exp: |
+    浮動小数点数の 0 で割ると、例外ではなく `Infinity`（無限大）や `NaN`（非数）になります。
+
+    - `NaN` は自分自身とも等しくないので、`==` は `false` です。判定には `nan?` を使います。
+    - `infinite?` は有限なら `nil`、正の無限大なら `1`、負の無限大なら `-1` を返します。
+
+    整数どうしの `1 / 0` は `ZeroDivisionError` です。
+
+- cat: 組み込みライブラリ
+  topic: Range の step と %
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p (1.0..2.0).step(0.5).to_a
+    p ((1..10) % 3).to_a
+    p 1.step(10, 4).to_a
+    p (1..10).sum, ("a".."c").sum("")
+  choices: ["[1.0, 1.5, 2.0]\n[1, 4, 7, 10]\n[1, 5, 9]\n55\n\"abc\"", "[1.0, 1.5]\n[1, 4, 7]\n[1, 5, 9]\n55\n\"abc\"", "[1.0, 1.5, 2.0]\n[3, 6, 9]\n[1, 5, 9]\n55\n\"abc\"", '!`TypeError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    - `Range#step(n)` は n 刻みで列挙します。小数の範囲でも使えます。
+    - `Range#%` は `step` の別名です（Ruby 2.6 から）。
+    - `Integer#step(上限, 刻み)` も同じように数えます。
+    - 整数の範囲の `sum` は公式で計算されます。文字列の範囲も `sum("")` で連結できます。
+
+- cat: 組み込みライブラリ
+  topic: String の分割と検索
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "hello world ruby".partition(" ")
+    p "a-b-c".rpartition("-")
+    p "a,b,,c,,".split(",")
+    p "a,b,,c,,".split(",", -1)
+    p "a b  c".split
+  choices: ["[\"hello\", \" \", \"world ruby\"]\n[\"a-b\", \"-\", \"c\"]\n[\"a\", \"b\", \"\", \"c\"]\n[\"a\", \"b\", \"\", \"c\", \"\", \"\"]\n[\"a\", \"b\", \"c\"]", "[\"hello\", \"world\", \"ruby\"]\n[\"a-b\", \"-\", \"c\"]\n[\"a\", \"b\", \"\", \"c\"]\n[\"a\", \"b\", \"\", \"c\", \"\", \"\"]\n[\"a\", \"b\", \"c\"]", "[\"hello\", \" \", \"world ruby\"]\n[\"a\", \"-\", \"b-c\"]\n[\"a\", \"b\", \"c\"]\n[\"a\", \"b\", \"\", \"c\", \"\", \"\"]\n[\"a\", \"b\", \"c\"]", "[\"hello\", \" \", \"world ruby\"]\n[\"a-b\", \"-\", \"c\"]\n[\"a\", \"b\", \"\", \"c\", \"\", \"\"]\n[\"a\", \"b\", \"\", \"c\", \"\", \"\"]\n[\"a\", \"b\", \"\", \"c\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `partition(sep)` … 最初の区切りで「前・区切り・後ろ」の3つに分けます。`rpartition` は最後の区切りで分けます。
+    - `split(sep)` … 末尾の空文字列は取り除かれます。第2引数に負の数を渡すと、末尾の空文字列も残ります。
+    - 引数なしの `split` は空白（連続した空白も1つとして）で分割します。
+
+- cat: 組み込みライブラリ
+  topic: tr / delete / squeeze / count
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "hello"
+    p s.tr("el", "ip")
+    p s.tr("a-y", "b-z")
+    p s.delete("l"), "aaabbb".squeeze
+    p s.count("lo"), s.count("a-z", "^l")
+  choices: ["\"hippo\"\n\"ifmmp\"\n\"heo\"\n\"ab\"\n3\n3", "\"hippo\"\n\"ifmmp\"\n\"helo\"\n\"ab\"\n3\n3", "\"hippo\"\n\"ifmmp\"\n\"heo\"\n\"aabb\"\n2\n3", "\"hello\"\n\"ifmmp\"\n\"heo\"\n\"ab\"\n3\n5"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `tr(from, to)` … 文字単位で置き換えます。`a-y` のような範囲や、`^` による否定も使えます。
+    - `delete` … 指定した文字をすべて取り除きます。
+    - `squeeze` … 連続した同じ文字を1つにまとめます。
+    - `count` … 指定した文字の数を数えます。複数の引数を渡すと、すべてに当てはまる文字（積集合）を数えます。`"a-z"` かつ `"^l"`（l 以外）なので `h, e, o` の 3 です。
+
+- cat: 組み込みライブラリ
+  topic: String#succ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "az".succ
+    p "zz".succ
+    p "a9".succ
+    p "Zz".succ
+    p ("a".."e").step(2).to_a
+  choices: ["\"ba\"\n\"aaa\"\n\"b0\"\n\"AAa\"\n[\"a\", \"c\", \"e\"]", "\"b\"\n\"aaa\"\n\"b0\"\n\"AAa\"\n[\"a\", \"c\", \"e\"]", "\"ba\"\n\"zz{\"\n\"a10\"\n\"Za\"\n[\"a\", \"c\", \"e\"]", "\"ba\"\n\"aaa\"\n\"b0\"\n\"aaa\"\n[\"a\", \"b\", \"c\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `succ`（`next`）は「次の」文字列を返します。英数字の右端を1つ進め、`z`→`a`、`Z`→`A`、`9`→`0` のように繰り上がると左の文字も進めます。左端で繰り上がると文字が1つ増えます（`"zz"` → `"aaa"`）。大文字小文字の種類は保たれます。
+
+    文字列の範囲は `succ` を使って列挙されます。
+
+- cat: 組み込みライブラリ
+  topic: String の添字と正規表現
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "Hello"
+    p s[1..], s[-3, 2], s[10]
+    p s[/l+/]
+    p "key=val"[/(\w+)=(\w+)/, 2]
+    p "key=val"[/(?<k>\w+)=/, "k"]
+  choices: ["\"ello\"\n\"ll\"\nnil\n\"ll\"\n\"val\"\n\"key\"", "\"ello\"\n\"lo\"\nnil\n\"ll\"\n\"val\"\n\"key\"", "\"ello\"\n\"ll\"\n\"\"\n\"ll\"\n\"val\"\n\"key\"", "\"ello\"\n\"ll\"\nnil\n\"l\"\n\"key\"\n\"key\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `String#[]` は多くの形の引数を受け付けます。
+
+    - 範囲 `1..` … 1文字目から最後まで。
+    - `[開始, 長さ]` … 負の開始位置は末尾から数えます。
+    - 範囲外の位置は `nil` です。
+    - 正規表現 … マッチした部分。第2引数でグループの番号や名前を指定すると、そのグループの部分だけを返します。
+
+- cat: 組み込みライブラリ
+  topic: 破壊的メソッドの戻り値（String）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = +"abc"
+    p s.sub!("x", "y")
+    p s.upcase!
+    p s.upcase!
+    p s.slice!(1)
+    p s
+  choices: ["nil\n\"ABC\"\nnil\n\"B\"\n\"AC\"", "\"abc\"\n\"ABC\"\n\"ABC\"\n\"B\"\n\"AC\"", "nil\n\"ABC\"\nnil\n\"AC\"\n\"AC\"", "nil\n\"ABC\"\n\"ABC\"\n\"B\"\n\"ABC\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `sub!`・`upcase!`・`strip!` など多くの `!` 付き文字列メソッドは、**変更がなかったときに `nil`** を返します。すでに大文字なので2回目の `upcase!` は `nil` です。
+
+    `slice!(n)` は取り除いた部分を返し、レシーバからはその部分が消えます。
+
+    `+"abc"` は凍結されていない文字列を得るための書き方です（`-"abc"` は凍結された文字列）。
+
+- cat: 組み込みライブラリ
+  topic: chomp / chop / strip
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "line\n".chomp
+    p "line".chop
+    p "line\r\n".chop
+    p "path/".chomp("/")
+    p "  x  ".strip, "xxhixx".delete_prefix("xx").delete_suffix("xx")
+  choices: ["\"line\"\n\"lin\"\n\"line\"\n\"path\"\n\"x\"\n\"hi\"", "\"line\"\n\"line\"\n\"line\"\n\"path\"\n\"x\"\n\"hi\"", "\"line\"\n\"lin\"\n\"line\\r\"\n\"path\"\n\"x\"\n\"hi\"", "\"line\"\n\"lin\"\n\"line\"\n\"path/\"\n\"x\"\n\"xhix\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `chomp` … 末尾の改行（`\n`、`\r\n`、`\r`）を1つ取り除きます。引数を渡すとその文字列を末尾から取り除きます。
+    - `chop` … 末尾の**1文字**を無条件に取り除きます。ただし `\r\n` は1文字として扱われます。
+    - `strip` … 前後の空白を取り除きます。
+    - `delete_prefix` / `delete_suffix` … 先頭・末尾の指定した文字列を1回だけ取り除きます。
+
+- cat: 組み込みライブラリ
+  topic: 名前付きキャプチャとローカル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    if /(?<year>\d+)-(?<mon>\d+)/ =~ "2024-05"
+      p [year, mon]
+    end
+    re = /(?<day>\d+)/
+    re =~ "06"
+    p defined?(day)
+    p "a1b2".match?(/\d/), $~ && $~[0]
+  choices: ["[\"2024\", \"05\"]\nnil\ntrue\n\"06\"", "[\"2024\", \"05\"]\n\"local-variable\"\ntrue\n\"06\"", "[\"2024\", \"05\"]\nnil\ntrue\n\"1\"", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    **正規表現リテラルを左辺に書いて** `=~` すると、名前付きグループと同じ名前のローカル変数が自動で作られます。
+
+    変数に入れた正規表現（`re =~ ...`）や、文字列を左辺に書いた場合は、ローカル変数は作られません。
+
+    `match?` は `true` / `false` を返すだけで、`$~` などのマッチ情報を**更新しません**。そのため `$~` は直前の `re =~ "06"` の結果のままです。
+
+- cat: 組み込みライブラリ
+  topic: Regexp.union とエスケープ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    re = Regexp.union("a.b", "c")
+    p re.match?("axb")
+    p re.match?("a.b")
+    p Regexp.escape("1+1=2")
+    p "TEST" =~ /test/i
+  choices: ["false\ntrue\n\"1\\\\+1=2\"\n0", "true\ntrue\n\"1\\\\+1=2\"\n0", "false\ntrue\n\"1+1=2\"\n0", "false\ntrue\n\"1\\\\+1=2\"\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Regexp.union` に文字列を渡すと、特殊文字をエスケープしたうえで `|` でつないだ正規表現を作ります。`"a.b"` の `.` は任意の1文字ではなく、文字そのものです。
+
+    `Regexp.escape` も同様に、正規表現の特殊文字の前に `\` を付けます。
+
+    `/i` オプションは大文字小文字を区別しません。`=~` はマッチした位置（ここでは `0`）を返します。
+
+- cat: 組み込みライブラリ
+  topic: scan とブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    total = 0
+    r = "a1 b22 c333".scan(/[a-z](\d+)/) { |(n)| total += n.to_i }
+    p total
+    p r
+    p "abcabc".index("c"), "abcabc".rindex("c"), "abc".index("z")
+  choices: ["356\n\"a1 b22 c333\"\n2\n5\nnil", "356\n[[\"1\"], [\"22\"], [\"333\"]]\n2\n5\nnil", "6\n\"a1 b22 c333\"\n2\n5\nnil", "356\n\"a1 b22 c333\"\n2\n2\n-1"]
+  answer: [0]
+  verify: output
+  exp: |
+    `scan` にブロックを渡すと、マッチごとにブロックを呼び、**レシーバの文字列自身**を返します。グループがある場合、ブロック引数はグループの配列です（`|(n)|` で取り出しています）。
+
+    `index` / `rindex` は最初・最後に見つかった位置を返し、見つからなければ `nil` です。
+
+- cat: 組み込みライブラリ
+  topic: Hash#merge とブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = {x: 1, y: 2}
+    b = {y: 10, z: 3}
+    p a.merge(b)
+    p a.merge(b) { |key, old, new| old + new }
+    p a
+    a.merge!(z: 0)
+    p a.size
+  choices: ["{:x=>1, :y=>10, :z=>3}\n{:x=>1, :y=>12, :z=>3}\n{:x=>1, :y=>2}\n3", "{:x=>1, :y=>2, :z=>3}\n{:x=>1, :y=>12, :z=>3}\n{:x=>1, :y=>2}\n3", "{:x=>1, :y=>10, :z=>3}\n{:x=>1, :y=>12, :z=>3}\n{:x=>1, :y=>12, :z=>3}\n3", "{:x=>1, :y=>10, :z=>3}\n{:x=>1, :y=>12, :z=>3}\n{:x=>1, :y=>2}\n2"]
+  answer: [0]
+  verify: output
+  exp: |
+    `merge` は2つのハッシュを合わせた**新しい**ハッシュを返します。キーが重なると、既定では引数側の値で上書きされます。ブロックを渡すと、重なったキーの値をブロックで決められます（引数はキー・元の値・新しい値）。
+
+    `merge!`（`update`）はレシーバ自身を書き換えます。
+
+- cat: 組み込みライブラリ
+  topic: Hash の変換いろいろ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = {b: 2, a: 1}
+    p h.invert, h.key(1)
+    p h.sort.to_h
+    p h.min_by { _2 }
+    p [[:x, 1], [:y, 2]].to_h { |k, v| [v, k] }
+    p h.sum { _2 }
+  choices: ["{2=>:b, 1=>:a}\n:a\n{:a=>1, :b=>2}\n[:a, 1]\n{1=>:x, 2=>:y}\n3", "{2=>:b, 1=>:a}\n:a\n[[:a, 1], [:b, 2]]\n[:a, 1]\n{1=>:x, 2=>:y}\n3", "{2=>:b, 1=>:a}\n1\n{:a=>1, :b=>2}\n{:a=>1}\n{1=>:x, 2=>:y}\n3", "{:b=>2, :a=>1}\n:a\n{:a=>1, :b=>2}\n[:a, 1]\n{:x=>1, :y=>2}\n3"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `invert` … キーと値を入れ替えます。`key(値)` は値からキーを探します。
+    - `sort` … ハッシュを `[キー, 値]` の配列にしてから並べ替えるので、結果は配列です。`to_h` でハッシュに戻せます。
+    - `min_by` / `sum` などの `Enumerable` のメソッドには `[キー, 値]` の組が渡されます。`_2` は値です。
+    - `Array#to_h` もブロックでキーと値を作り直せます。
+
+- cat: 組み込みライブラリ
+  topic: Hash#delete と既定値の設定
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = {a: 1}
+    p h.delete(:z)
+    p h.delete(:z) { |k| "no #{k}" }
+    p h.delete(:a), h
+    h.default = 0
+    p h[:q], h.fetch(:q, -1), h.key?(:q)
+  choices: ["nil\n\"no z\"\n1\n{}\n0\n-1\nfalse", "nil\n\"no z\"\n1\n{}\n0\n0\nfalse", "nil\nnil\n1\n{}\n0\n-1\nfalse", "nil\n\"no z\"\n{:a=>1}\n{}\n0\n-1\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `delete(key)` は取り除いた値を返します。キーがなければ `nil`、ブロックがあればブロックの値です。
+    - `default=` で、存在しないキーを `[]` で参照したときの既定値を設定できます。
+    - `fetch` は既定値（`default`）を使わず、第2引数かブロックの値、どちらもなければ `KeyError` です。
+    - 既定値を返してもキーは追加されないので、`key?` は `false` です。
+
+- cat: 組み込みライブラリ
+  topic: Hash#compare_by_identity
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = {}.compare_by_identity
+    k = "key"
+    h[k] = 1
+    h["key".dup] = 2
+    p h.size
+    p h[k], h["key"]
+  choices: ["2\n1\nnil", "1\n2\n2", "2\n1\n1", "1\n1\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `compare_by_identity` を呼んだハッシュは、キーを `eql?` ではなく**同一のオブジェクトかどうか**（`equal?`）で比べます。
+
+    中身が同じ文字列でも別のオブジェクトなので、2つのキーとして登録されます。新しく書いた `"key"` もまた別のオブジェクトなので、見つからず `nil` です。
+
+- cat: 組み込みライブラリ
+  topic: Hash の順序と any? / count / find
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    h = {c: 3, a: 1, b: 2}
+    p h.keys
+    p h.any? { |k, v| v > 2 }
+    p h.count { |k, v| v.odd? }
+    p h.find { |k, v| v < 3 }
+    p h.each_with_index.map { |(k, v), i| "#{i}#{k}" }
+  choices: ["[:c, :a, :b]\ntrue\n2\n[:a, 1]\n[\"0c\", \"1a\", \"2b\"]", "[:a, :b, :c]\ntrue\n2\n[:a, 1]\n[\"0a\", \"1b\", \"2c\"]", "[:c, :a, :b]\ntrue\n2\n{:a=>1}\n[\"0c\", \"1a\", \"2b\"]", "[:c, :a, :b]\nfalse\n2\n[:a, 1]\n[\"0c\", \"1a\", \"2b\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュは**キーを追加した順番**を保ちます。`keys` や `each` もその順です。
+
+    `any?`・`count`・`find` などの `Enumerable` のメソッドでは、ブロックに `[キー, 値]` が渡されます。`|k, v|` と書けば分解されます。`find` は見つかった組を配列で返します。
+
+    `each_with_index` では `[[キー, 値], 添字]` が渡されるので、`|(k, v), i|` のように入れ子で分解します。
+
+- cat: 組み込みライブラリ
+  topic: Thread::Queue
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    q = Thread::Queue.new
+    producer = Thread.new do
+      3.times { |i| q << i * 10 }
+      q << :done
+    end
+    result = []
+    while (v = q.pop) != :done
+      result << v
+    end
+    producer.join
+    p result, q.empty?
+  choices: ["[0, 10, 20]\ntrue", "[]\ntrue", "[0, 10, 20, :done]\ntrue", "[0, 10, 20]\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Thread::Queue`（`Queue`）はスレッド間で安全に値を受け渡すためのキューです。
+
+    - `push`（`<<`）で末尾に追加し、`pop` で先頭から取り出します。
+    - キューが空のときの `pop` は、値が入るまで**待ちます**（ブロックする）。
+
+    生産者と消費者のスレッドで、終わりの合図（ここでは `:done`）を送るのがよくある形です。
+
+- cat: 組み込みライブラリ
+  topic: Mutex
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    m = Mutex.new
+    count = 0
+    threads = 5.times.map do
+      Thread.new do
+        100.times { m.synchronize { count += 1 } }
+      end
+    end
+    threads.each(&:join)
+    p count
+    p m.locked?
+  choices: ["500\nfalse", "100\nfalse", "500\ntrue", '!`ThreadError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `Mutex#synchronize { }` は、ブロックを実行している間ロックを取り、ほかのスレッドが同じ Mutex のブロックに入れないようにします。共有する変数を安全に更新できます。
+
+    ブロックを抜けるとロックは解除されるので、最後の `locked?` は `false` です。`join` で全スレッドの終了を待ってから結果を見ています。
+
+- cat: 組み込みライブラリ
+  topic: スレッドローカル変数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    Thread.current[:user] = "main"
+    t = Thread.new do
+      before = Thread.current[:user]
+      Thread.current[:user] = "worker"
+      [before, Thread.current[:user]]
+    end
+    p t.value
+    p Thread.current[:user]
+  choices: ["[nil, \"worker\"]\n\"main\"", "[\"main\", \"worker\"]\n\"worker\"", "[\"main\", \"worker\"]\n\"main\"", "[nil, \"worker\"]\n\"worker\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Thread.current[:キー]` は**スレッドごと**の変数です（正確にはファイバーごと）。新しいスレッドからはメインスレッドの値は見えず、`nil` です。逆に、新しいスレッドで設定した値はメインスレッドに影響しません。
+
+    スレッドの終了を待って値を受け取るには `value` を使います。
+
+- cat: 組み込みライブラリ
+  topic: Symbol のメソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p :b <=> :a
+    p %i[b a c].sort
+    p :abc.size, :abc[1]
+    p :name.to_proc.call(Struct.new(:name).new("Ann"))
+    p "hi".to_sym.equal?(:hi)
+  choices: ["1\n[:a, :b, :c]\n3\n\"b\"\n\"Ann\"\ntrue", "1\n[:a, :b, :c]\n3\n:b\n\"Ann\"\ntrue", "nil\n[:b, :a, :c]\n3\n\"b\"\n\"Ann\"\ntrue", "1\n[:a, :b, :c]\n3\n\"b\"\n\"Ann\"\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    シンボルは文字列のように比較・添字参照ができます。`:abc[1]` は**文字列** `"b"` を返します。
+
+    `Symbol#to_proc` は、引数をレシーバにしてそのメソッドを呼ぶ Proc を作ります。
+
+    同じ名前のシンボルは常に同じオブジェクトなので、`"hi".to_sym` も `:hi` と同一です。
+
+- cat: 組み込みライブラリ
+  topic: format の書式
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p format("%.3e", 12345.678)
+    p format("%+d|% d", 5, 5)
+    p format("%,d", 1000) rescue p $!.class
+    p 1234567.to_s.reverse.scan(/\d{1,3}/).join(",").reverse
+  choices: ["\"1.235e+04\"\n\"+5| 5\"\nArgumentError\n\"1,234,567\"", "\"12345.678\"\n\"+5| 5\"\nArgumentError\n\"1,234,567\"", "\"1.235e+04\"\n\"5|5\"\n\"1,000\"\n\"1,234,567\"", "\"1.235e+04\"\n\"+5| 5\"\nArgumentError\n\"765,432,1\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `%e` は指数表記です。`.3` で小数点以下3桁になります。
+    - `%+d` は正の数にも `+` を付け、`% d` は正の数の前に空白を入れます。
+    - Ruby の `format` には桁区切りの `,` フラグはなく、`ArgumentError` です。
+
+    3桁ごとにカンマを入れるには、最後の行のように文字列を処理する方法がよく使われます。
+
+- cat: 組み込みライブラリ
+  topic: Marshal による深いコピー
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    src = {list: [1, [2, 3]]}
+    shallow = src.dup
+    deep = Marshal.load(Marshal.dump(src))
+    src[:list][1] << 4
+    p shallow[:list][1], deep[:list][1]
+    Marshal.dump(proc {})
+  choices:
+    - '`[2, 3, 4]` と `[2, 3]` が出力された後、`TypeError` が発生する'
+    - '`[2, 3]` と `[2, 3]` が出力された後、`TypeError` が発生する'
+    - '`[2, 3, 4]` と `[2, 3, 4]` が出力され、エラーは発生しない'
+    - '`[2, 3, 4]` と `[2, 3]` が出力され、エラーは発生しない'
+  answer: [0]
+  verify: run
+  expect: {out: "[2, 3, 4]\n[2, 3]", error: TypeError}
+  exp: |
+    `dup` と `clone` は**浅いコピー**で、中に入っている配列などは元と共有されます。
+
+    `Marshal.dump` でバイト列にしてから `Marshal.load` で戻すと、中身まですべて複製した**深いコピー**が得られます。
+
+    ただし `Proc`・`IO`・特異メソッドを持つオブジェクトなどはシリアライズできず、`TypeError` です。
+
+- cat: 組み込みライブラリ
+  topic: Kernel の変換メソッド
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p Integer("42", 8)
+    p Array(nil), Array([1]), Array(1..2)
+    p String(12), Hash(nil), Hash([])
+  choices: ["34\n[]\n[1]\n[1, 2]\n\"12\"\n{}\n{}", "42\n[nil]\n[1]\n[1..2]\n\"12\"\n{}\n{}", "34\n[nil]\n[[1]]\n[1, 2]\n\"12\"\n{}\n{}", "34\n[]\n[1]\n[1..2]\n\"12\"\nnil\n[]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Kernel` には、大文字で始まる変換用のメソッドがあります。
+
+    - `Integer(文字列, 基数)` … 8進数の `"42"` は `34` です。
+    - `Array(obj)` … `nil` は `[]`、配列はそのまま、`to_a` できるもの（範囲など）は `to_a` の結果、それ以外は `[obj]` になります。
+    - `String(obj)` は `to_s` で変換します。`Hash(obj)` は `nil` と空配列を `{}` にし、それ以外は `to_hash` で変換します（`[[1, 2]]` のような配列は `TypeError`。こちらは `to_h` を使います）。
+
+- cat: 組み込みライブラリ
+  topic: Comparable#clamp と範囲
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 15.clamp(1, 10)
+    p -3.clamp(0..)
+    p 5.clamp(..3)
+    p 2.between?(1, 3)
+  choices: ["10\n0\n3\ntrue", "10\n-3\n3\ntrue", "15\n0\n5\ntrue", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `clamp(min, max)` は、値を範囲の中に収めます。範囲より小さければ `min`、大きければ `max`、範囲内ならそのままです。
+
+    Ruby 2.7 からは範囲オブジェクトも渡せ、`0..` や `..3` のように片側だけの範囲も使えます。
+
+    `between?(min, max)` は範囲内かどうかを真偽値で返します。
+
+- cat: 組み込みライブラリ
+  topic: each_with_object と既定値ブロック
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    words = %w[apple banana avocado]
+    index = words.each_with_object(Hash.new { |h, k| h[k] = [] }) do |w, h|
+      h[w[0]] << w
+    end
+    p index
+    p index["z"]
+    p index.keys
+  choices: ["{\"a\"=>[\"apple\", \"avocado\"], \"b\"=>[\"banana\"]}\n[]\n[\"a\", \"b\", \"z\"]", "{\"a\"=>[\"apple\", \"avocado\"], \"b\"=>[\"banana\"]}\nnil\n[\"a\", \"b\"]", "{\"a\"=>[\"apple\", \"avocado\"], \"b\"=>[\"banana\"]}\n[]\n[\"a\", \"b\"]", "{\"a\"=>[\"avocado\"], \"b\"=>[\"banana\"]}\n[]\n[\"a\", \"b\", \"z\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `each_with_object` に、存在しないキーで空配列を作って登録するハッシュを渡し、頭文字ごとに単語を集めています（`group_by { _1[0] }` と同じ結果です）。
+
+    このハッシュはブロック付きの `Hash.new` なので、あとから `index["z"]` と参照しただけでも `"z" => []` が**登録されます**。参照だけのつもりでもキーが増える点に注意しましょう。
+
+- cat: 組み込みライブラリ
+  topic: Array#pack と String#unpack1
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p [65, 66].pack("C*")
+    p "AB".unpack("C*")
+    p ["hello"].pack("m0")
+    p "aGVsbG8=".unpack1("m0")
+  choices: ["\"AB\"\n[65, 66]\n\"aGVsbG8=\"\n\"hello\"", "\"6566\"\n[65, 66]\n\"aGVsbG8=\"\n\"hello\"", "\"AB\"\n[\"A\", \"B\"]\n\"aGVsbG8=\"\n\"hello\"", "\"AB\"\n[65, 66]\n\"hello\"\n\"aGVsbG8=\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Array#pack` はテンプレートに従って値をバイト列に詰め、`String#unpack` はその逆を行います。
+
+    - `C` … 8ビットの符号なし整数（1バイト）。`*` は残りすべて。
+    - `m` … Base64。`m0` は改行を入れない形式です。
+
+    `unpack1` は結果の配列の最初の要素だけを返します。
+
+- cat: 組み込みライブラリ
+  topic: 文字と文字コード
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p "A".ord, 97.chr
+    p "あ".ord.to_s(16)
+    p "Ab".bytes, "あ".bytes.size
+    p "abc".each_char.to_a == "abc".chars
+  choices: ["65\n\"a\"\n\"3042\"\n[65, 98]\n3\ntrue", "65\n\"a\"\n\"3042\"\n[65, 98]\n1\ntrue", "\"65\"\n\"a\"\n\"3042\"\n[65, 98]\n3\ntrue", "65\n97\n\"3042\"\n[65, 98]\n3\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `ord` は最初の文字のコードポイント（Unicode の番号）、`Integer#chr` はその逆です。
+    - `bytes` はバイト値の配列です。UTF-8 では「あ」は3バイトです。
+    - `chars` は文字の配列、`each_char` は文字を1つずつたどる `Enumerator` を返します。
+
+- cat: 組み込みライブラリ
+  topic: Integer#times と each_with_index の Enumerator
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 3.times.map { _1 * 2 }
+    p %w[a b].each_with_index.to_a
+    p %w[a b].each.with_index(1).map { |s, i| s * i }
+    p 3.times.class
+  choices: ["[0, 2, 4]\n[[\"a\", 0], [\"b\", 1]]\n[\"a\", \"bb\"]\nEnumerator", "[2, 4, 6]\n[[\"a\", 0], [\"b\", 1]]\n[\"a\", \"bb\"]\nEnumerator", "[0, 2, 4]\n[[0, \"a\"], [1, \"b\"]]\n[\"a\", \"bb\"]\nEnumerator", "[0, 2, 4]\n[[\"a\", 0], [\"b\", 1]]\n[\"\", \"b\"]\nArray"]
+  answer: [0]
+  verify: output
+  exp: |
+    ブロックなしで呼んだ繰り返しメソッドは `Enumerator` を返すので、`map` などをつなげられます。`3.times.map` は `0, 1, 2` を変換します。
+
+    `each_with_index` は `[要素, 添字]` の組を作ります。`with_index(1)` で添字を 1 から始められます。
