@@ -1,6 +1,6 @@
 // Starting, archiving and scoring exams.
 import type { Category, ExamRecord, Question, Session } from '../lib/types';
-import { OFFICIAL, ORIGINAL, QUESTIONS, keyOf, question } from './data';
+import { EXAM, OFFICIAL, ORIGINAL, QUESTIONS, keyOf, question } from './data';
 import { navigate } from './router';
 import { MAX_RECORDS, save, state } from './state';
 
@@ -40,7 +40,7 @@ export function startExam(spec: ExamSpec): void {
   const official = OFFICIAL.map((q) => q.id);
   let title: string, ids: number[];
   switch (spec.kind) {
-    case 'mock': ids = shuffle(all).slice(0, 50); title = '模擬試験'; break;
+    case 'mock': ids = shuffle(all).slice(0, EXAM.size); title = '模擬試験'; break;
     case 'mini': ids = shuffle(all).slice(0, 10); title = 'ミニテスト'; break;
     case 'all': ids = all; title = '全問チャレンジ'; break;
     case 'cat': ids = ORIGINAL.filter((q) => q.cat === spec.cat).map((q) => q.id); title = `分野別：${spec.cat}`; break;

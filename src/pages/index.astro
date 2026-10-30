@@ -1,38 +1,49 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { EXAMS, SITE_NAME } from '../lib/exams';
 import { loadQuestions } from '../lib/questions';
 
-const questions = loadQuestions();
-const official = questions.filter((q) => q.official !== undefined).length;
-const original = questions.length - official;
-// Safe inside <script>: no "</script>", and no raw U+2028 / U+2029.
-const json = JSON.stringify(questions)
-  .replace(/</g, '\\u003c')
-  .replace(new RegExp('\\u2028', 'g'), '\\u2028')
-  .replace(new RegExp('\\u2029', 'g'), '\\u2029');
+const exams = EXAMS.map((exam) => {
+  const questions = loadQuestions(exam);
+  const official = questions.filter((q) => q.official !== undefined).length;
+  return { exam, total: questions.length, official, original: questions.length - official };
+});
 ---
 
-<Layout
-  title="Ruby Silver 道場"
-  description="Ruby技術者認定試験Silverのオリジナル問題と公式模擬問題を1問ずつ解いて、その場で正解と解説を確認できる学習サイト。"
->
+<Layout title={SITE_NAME} description="資格試験のオリジナル問題と公式模擬問題を1問ずつ解いて、その場で正解と解説を確認できる学習サイト。">
   <div class="wrap">
     <header class="top">
       <div class="brand">
-        <a href="#home"><h1><span class="gem" aria-hidden="true"></span>Ruby Silver 道場</h1></a>
-        <small>Silver version 3（Ruby 3.1）対応・オリジナル{original}問＋公式模擬問題{official}問</small>
+        <a href="/"><h1><span class="gem" aria-hidden="true"></span>{SITE_NAME}</h1></a>
+        <small>資格試験の問題を1問ずつ解いて、その場で解説を確認</small>
       </div>
     </header>
 
-    <main id="main"></main>
+    <main>
+      <p class="intro">学習する試験を選んでください。出題順と選択肢の並びは毎回ランダムで、学習記録と受験履歴は試験ごとにこのブラウザに保存されます。</p>
+      <section class="panel" aria-labelledby="h-certs">
+        <div class="panel-head"><h2 id="h-certs">試験を選ぶ</h2></div>
+        <ul class="certs">
+          {exams.map(({ exam, total, official, original }) => (
+            <li>
+              <a class="cert" href={`/${exam.slug}/`} data-storage={exam.storage} data-total={total}>
+                <span class="cert-name"><span class="gem" aria-hidden="true"></span>{exam.name}</span>
+                <span class="cert-sub">{exam.fullName}・{exam.version}</span>
+                <span class="cert-count">オリジナル {original} 問＋公式模擬問題 {official} 問</span>
+                <span class="cert-progress" hidden></span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </main>
 
     <footer>
-      公式模擬問題以外の問題はこのサイトのオリジナルです。公式模擬問題は <a href="https://github.com/ruby-association/prep-test" target="_blank" rel="noopener">Ruby Association のサンプル問題</a>をもとに誤記を修正したもので、解説はこのサイトで書き下ろしています。コードは実際に Ruby で実行し、正解が実行結果と一致することを確かめています（試験の対象は Ruby 3.1、確認は Ruby 3.3）。本試験は 50 問・90 分・正答率 75% で合格です。学習記録と受験履歴はこのブラウザにだけ保存されます。
+      公式模擬問題以外の問題はこのサイトのオリジナルです。公式模擬問題は <a href="https://github.com/ruby-association/prep-test" target="_blank" rel="noopener">Ruby Association のサンプル問題</a>をもとに誤記を修正したもので、解説はこのサイトで書き下ろしています。
     </footer>
   </div>
 
-  <script is:inline id="qdata" type="application/json" set:html={json}></script>
   <script>
-    import '../client/main';
+    import '../client/portal';
   </script>
 </Layout>

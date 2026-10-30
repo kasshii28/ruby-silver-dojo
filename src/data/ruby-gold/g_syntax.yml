@@ -1,0 +1,593 @@
+# 文法・実行環境
+- cat: 実行環境
+  topic: コマンドラインオプション
+  q: '`ruby` コマンドのオプションの説明として正しいものを2つ選択してください。'
+  choices:
+    - '`-c` はスクリプトを実行せず、文法チェックだけを行う'
+    - '`-w` はスクリプトを実行せず、警告だけを表示する'
+    - '`-e` は引数の文字列をスクリプトとして実行する'
+    - '`-l` は指定したライブラリを読み込む'
+  answer: [0, 2]
+  verify: checks
+  checks:
+    - 'out = IO.popen(["ruby", "-c", "-e", "puts :ran"], &:read); exit(out.include?("Syntax OK") && !out.include?("ran"))'
+    - 'out = IO.popen(["ruby", "-w", "-e", "puts :ran"], err: [:child, :out], &:read); exit(!out.include?("ran"))'
+    - 'out = IO.popen(["ruby", "-e", "puts 1 + 2"], &:read); exit(out == "3\n")'
+    - 'out = IO.popen(["ruby", "-l", "-e", "p defined?(JSON)"], err: [:child, :out], &:read); exit(out.include?("constant"))'
+  exp: |
+    - `-c` … 文法チェックだけを行い、問題がなければ `Syntax OK` と表示します。スクリプトは実行しません。
+    - `-w` … 警告を有効にしてスクリプトを**実行**します（`-W2` と同じ）。
+    - `-e 'コード'` … 引数をスクリプトとして実行します。複数回指定すると1行ずつつながります。
+    - `-l` … 行末の改行を自動で取り除き、`print` の後に改行を付けます（`-n` / `-p` と組み合わせて使います）。ライブラリを読み込むのは `-r ライブラリ名` です。
+
+- cat: 実行環境
+  topic: -n と -p
+  q: '`printf "a\nb\n" | ruby -p -e ''$_.upcase!''` を実行したときの出力として正しいものを選択してください。'
+  choices: ["A\nB", "a\nb", '!何も出力されない', "A\nB\nA\nB"]
+  cm: true
+  answer: [0]
+  verify: checks
+  checks:
+    - 'exit(IO.popen(["ruby", "-p", "-e", "$_.upcase!"], "r+") { |io| io.write("a\nb\n"); io.close_write; io.read } == "A\nB\n")'
+    - 'exit(IO.popen(["ruby", "-p", "-e", "$_.upcase!"], "r+") { |io| io.write("a\nb\n"); io.close_write; io.read } == "a\nb\n")'
+    - 'exit(IO.popen(["ruby", "-p", "-e", "$_.upcase!"], "r+") { |io| io.write("a\nb\n"); io.close_write; io.read } == "")'
+    - 'exit(IO.popen(["ruby", "-p", "-e", "$_.upcase!"], "r+") { |io| io.write("a\nb\n"); io.close_write; io.read } == "A\nB\nA\nB\n")'
+  exp: |
+    `-n` はスクリプト全体を `while gets ... end` で囲んだように動きます。読み込んだ行は `$_` に入ります。
+
+    `-p` は `-n` に加えて、ループの最後で `$_` を出力します。`$_.upcase!` で `$_` 自身を書き換えているので、大文字にした行が出力されます。
+
+    `-n` だけなら自動では出力されないので、`ruby -n -e 'print $_.upcase'` のように自分で出力します。
+
+- cat: 実行環境
+  topic: -r と -I
+  q: 'カレントディレクトリの `lib/greet.rb` を読み込んでから `main.rb` を実行したい。正しいコマンドを2つ選択してください。'
+  choices:
+    - '`ruby -I lib -r greet main.rb`'
+    - '`ruby -Ilib -rgreet main.rb`'
+    - '`ruby -r lib -I greet main.rb`'
+    - '`ruby -l lib -r greet main.rb`'
+  answer: [0, 1]
+  verify: checks
+  checks:
+    - 'Dir.mkdir("lib") unless Dir.exist?("lib"); File.write("lib/greet.rb", "GREET = 1"); File.write("main.rb", "p GREET"); exit(system("ruby -I lib -r greet main.rb", out: File::NULL, err: File::NULL))'
+    - 'Dir.mkdir("lib") unless Dir.exist?("lib"); File.write("lib/greet.rb", "GREET = 1"); File.write("main.rb", "p GREET"); exit(system("ruby -Ilib -rgreet main.rb", out: File::NULL, err: File::NULL))'
+    - 'Dir.mkdir("lib") unless Dir.exist?("lib"); File.write("lib/greet.rb", "GREET = 1"); File.write("main.rb", "p GREET"); exit(system("ruby -r lib -I greet main.rb", out: File::NULL, err: File::NULL))'
+    - 'Dir.mkdir("lib") unless Dir.exist?("lib"); File.write("lib/greet.rb", "GREET = 1"); File.write("main.rb", "p GREET"); exit(system("ruby -l lib -r greet main.rb", out: File::NULL, err: File::NULL))'
+  exp: |
+    - `-I ディレクトリ` … `$LOAD_PATH`（`$:`）の先頭にディレクトリを追加します。
+    - `-r ライブラリ` … スクリプトの実行前にライブラリを `require` します。
+
+    オプションと値の間の空白は省略できるので、`-Ilib -rgreet` とも書けます。順番は、先に `-I` で探す場所を追加してから `-r` で読み込みます。
+
+- cat: 実行環境
+  topic: 組み込み変数
+  q: 'ファイル `app.rb` に次のコードを書き、`ruby app.rb x y` で実行しました。出力として正しいものを選択してください。'
+  code: |
+    p $0
+    p ARGV
+    p __FILE__ == $0
+  choices: ["\"app.rb\"\n[\"x\", \"y\"]\ntrue", "\"ruby\"\n[\"app.rb\", \"x\", \"y\"]\ntrue", "\"app.rb\"\n[\"app.rb\", \"x\", \"y\"]\nfalse", "\"ruby\"\n[\"x\", \"y\"]\nfalse"]
+  cm: true
+  answer: [0]
+  verify: checks
+  setup: 'File.write("app.rb", "p $0\np ARGV\np __FILE__ == $0\n"); out = IO.popen(["ruby", "app.rb", "x", "y"], &:read)'
+  checks:
+    - "exit(out == %Q(\"app.rb\"\\n[\"x\", \"y\"]\\ntrue\\n))"
+    - "exit(out == %Q(\"ruby\"\\n[\"app.rb\", \"x\", \"y\"]\\ntrue\\n))"
+    - "exit(out == %Q(\"app.rb\"\\n[\"app.rb\", \"x\", \"y\"]\\nfalse\\n))"
+    - "exit(out == %Q(\"ruby\"\\n[\"x\", \"y\"]\\nfalse\\n))"
+  exp: |
+    - `$0`（`$PROGRAM_NAME`）… 実行中のスクリプト名です。
+    - `ARGV` … コマンドライン引数の配列です。スクリプト名は含みません（C 言語の `argv` と違う点）。
+    - `__FILE__` … そのコードが書かれているファイル名です。
+
+    `if __FILE__ == $0` は「このファイルが直接実行されたときだけ」動かす、というよく使われる書き方です。`require` されたときは `__FILE__` と `$0` が違うので実行されません。
+
+- cat: 実行環境
+  topic: __method__ と __dir__
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def greet
+      __method__
+    end
+    alias hello greet
+    p greet
+    p hello
+  choices: [":greet\n:greet", ":greet\n:hello", "\"greet\"\n\"hello\"", "nil\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    `__method__` は、いま実行中のメソッドの**定義時の名前**をシンボルで返します。別名 `hello` で呼んでも `:greet` です（呼ばれた名前がほしいときは `__callee__` を使い、こちらは `:hello` になります）。
+
+    メソッドの外では `nil` です。似たものに、ファイルのあるディレクトリを返す `__dir__` があります。
+
+- cat: 実行環境
+  topic: frozen_string_literal
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    # frozen_string_literal: true
+    s = "abc"
+    t = "abc"
+    p s.equal?(t)
+    s << "d"
+  choices:
+    - '`true` と出力された後、`FrozenError` が発生する'
+    - '`false` と出力された後、`FrozenError` が発生する'
+    - '`true` と出力され、エラーは発生しない'
+    - '`false` と出力され、エラーは発生しない'
+  answer: [0]
+  verify: run
+  expect: {out: "true", error: FrozenError}
+  exp: |
+    ファイルの先頭に `# frozen_string_literal: true` というマジックコメントを書くと、そのファイルの文字列リテラルはすべて凍結（freeze）されます。
+
+    凍結された同じ内容のリテラルは同じオブジェクトが使い回されるので、`equal?` は `true` です。凍結された文字列に `<<` で追記すると `FrozenError` が発生します。書き換えたいときは `+"abc"` や `"abc".dup` で凍結されていないコピーを作ります。
+
+- cat: 文法
+  topic: 定数の探索（レキシカルスコープ）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    X = "top"
+    module M
+      X = "M"
+      class C
+        def x = X
+      end
+    end
+    class M::C
+      def y = X
+    end
+    c = M::C.new
+    p c.x
+    p c.y
+  choices: ["\"M\"\n\"top\"", "\"M\"\n\"M\"", "\"top\"\n\"top\"", "\"top\"\n\"M\""]
+  answer: [0]
+  verify: output
+  exp: |
+    定数は、まず**ソースコード上で外側を囲んでいる** `module` / `class` の中（レキシカルスコープ）を探し、次に継承チェーン、最後にトップレベルを探します。
+
+    - `x` は `module M` の中に書かれているので、`M::X`（`"M"`）が見つかります。
+    - `y` は `class M::C` と書いたので、囲んでいるのは `M::C` だけで `M` は含まれません。`C` の継承チェーン（`Object`）を探して、トップレベルの `X`（`"top"`）になります。
+
+    `Module.nesting` を使うと、その場所のレキシカルスコープを確認できます。なお `def x = X` は Ruby 3.0 から使える1行のメソッド定義です。
+
+- cat: 文法
+  topic: Module.nesting
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module A
+      module B
+        p Module.nesting
+      end
+    end
+    module A::B
+      p Module.nesting
+    end
+  choices: ["[A::B, A]\n[A::B]", "[A, A::B]\n[A::B]", "[A::B, A]\n[A::B, A]", "[A::B]\n[A::B]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Module.nesting` は、その位置を囲んでいるモジュール・クラスを**内側から順に**並べた配列です。
+
+    `module A::B` と1行で書くと、囲んでいるのは `A::B` だけになり、`A` は含まれません。そのため、この中から `A` に定義した定数を名前だけで参照することはできません。
+
+- cat: 文法
+  topic: 定数の再代入
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    LIMIT = 10
+    LIMIT = 20
+    p LIMIT
+    def change
+      LIMIT = 30
+    end
+  choices:
+    - '!文法エラーが発生する'
+    - '警告が出たあと、`20` と出力される'
+    - '`10` と出力される'
+    - '!実行時に `NameError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {error: SyntaxError}
+  exp: |
+    定数への再代入は警告（`already initialized constant`）が出るだけで実行できます。
+
+    しかし**メソッドの中で定数に代入する**ことは文法として禁止されていて、`dynamic constant assignment` という文法エラーになります。文法エラーはファイル全体を解析する時点で見つかるので、1行目から何も実行されません。
+
+- cat: 文法
+  topic: 演算子の優先順位
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a = false || true
+    b = false or true
+    p a, b
+  choices: ["true\nfalse", "true\ntrue", "false\nfalse", "false\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `||` は代入 `=` より優先順位が高いので、`a = (false || true)` で `a` は `true` です。
+
+    `or` は代入より優先順位が**低い**ので、`(b = false) or true` と解釈されます。`b` には `false` が入り、`or true` の部分は結果が捨てられます。`and` / `not` も同様に優先順位が低いので、条件式では `&&` / `||` / `!` を使うのが安全です。
+
+- cat: 文法
+  topic: ブロックのreturn（Proc と lambda）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def run_proc
+      pr = Proc.new { return 1 }
+      pr.call
+      2
+    end
+    def run_lambda
+      la = lambda { return 1 }
+      la.call
+      2
+    end
+    p run_proc
+    p run_lambda
+  choices: ["1\n2", "2\n1", "1\n1", "2\n2"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Proc.new` のブロックの中の `return` は、**ブロックを書いたメソッド**（`run_proc`）から抜けます。`run_proc` は `1` を返します。
+    - `lambda` の中の `return` は、**lambda 自身**から抜けるだけです。`la.call` が `1` を返し、`run_lambda` はそのまま続いて `2` を返します。
+
+    メソッドの外で作った `Proc` の中で `return` すると、抜ける先のメソッドがないので `LocalJumpError` になります。
+
+- cat: 文法
+  topic: Proc と lambda の引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    pr = proc { |a, b| [a, b] }
+    la = lambda { |a, b| [a, b] }
+    p pr.call(1)
+    p pr.call([1, 2])
+    p la.call(1, 2, 3)
+  choices:
+    - '`[1, nil]` と `[1, 2]` が出力された後、`ArgumentError` が発生する'
+    - '`[1, nil]` と `[[1, 2], nil]` が出力された後、`ArgumentError` が発生する'
+    - '`[1, nil]`、`[1, 2]`、`[1, 2]` が出力される'
+    - '1つ目の `pr.call(1)` で `ArgumentError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "[1, nil]\n[1, 2]", error: ArgumentError}
+  exp: |
+    `proc`（`Proc.new`）の引数はゆるやかに扱われます。
+
+    - 足りない引数は `nil`、余った引数は捨てられます。
+    - 配列を1つだけ渡し、ブロック引数が2つ以上あると、配列が展開されます。
+
+    `lambda` はメソッドと同じく引数の数を厳密にチェックするので、3つ渡すと `ArgumentError` です。`Proc#lambda?` でどちらかを確認できます。
+
+- cat: 文法
+  topic: パターンマッチ（ハッシュ）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    user = {name: "Alice", role: {admin: true}, age: 20}
+    case user
+    in {name: String => name, role: {admin: false}}
+      puts "user #{name}"
+    in {name: String => name, role: {admin: true}}
+      puts "admin #{name}"
+    end
+  choices: ['admin Alice', 'user Alice', '!`NoMatchingPatternError` が発生する', '!文法エラーが発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    ハッシュパターンは、パターンに書いたキーだけを調べます。パターンにない `age` があっても一致します（配列パターンは要素の数まで一致する必要があるのと対照的です）。
+
+    `String => name` は「`String` に一致したら、その値を `name` に束縛する」という意味です。1つ目は `admin: false` が一致しないので、2つ目の節が選ばれます。
+
+    どの `in` にも一致せず `else` もない場合は `NoMatchingPatternError` が発生します。
+
+- cat: 文法
+  topic: パターンマッチ（ピン演算子）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    expected = 5
+    case [1, 5]
+    in [x, ^expected]
+      p x
+    in [x, y]
+      p y
+    end
+  choices: ['1', '5', '[1, 5]', '!`NoMatchingPatternError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    パターンに変数名だけを書くと「何にでも一致して、その値を束縛する」という意味になります。既存の変数の**値と比較したい**ときは、`^expected` のようにピン演算子 `^` を付けます。
+
+    `[1, 5]` は `[x, ^expected]`（2番目が `5`）に一致し、`x` に `1` が入ります。
+
+- cat: 文法
+  topic: パターンマッチ（ガードと find パターン）
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    case [1, 3, 8, 2]
+    in [*, x, *] if x > 5
+      p x
+    in _
+      p :none
+    end
+  choices: ['8', '1', ':none', '[1, 3, 8, 2]']
+  answer: [2]
+  verify: output
+  exp: |
+    `[*, x, *]` は find パターンで、配列の中から**パターンに一致する最初の位置**を探します。`x` は何にでも一致するので、先頭の `1` で一致が決まります。
+
+    `if x > 5` のガード節は、パターンの一致が決まった**あと**で1回だけ調べられます。`1 > 5` は偽なので、この `in` 節は不成立になり、次の位置（`3` や `8`）を探し直すことはありません。そのため `in _` の節に進み、`:none` が出力されます。
+
+    `8` を取り出したいなら、条件をパターン側に書いて `in [*, 6.. => x, *]` とします。範囲パターン `6..` に一致する位置を探すので、`x` は `8` になります。
+
+    `in _` は何にでも一致するので、`else` と同じ役割です。
+
+- cat: 文法
+  topic: 右代入とin
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    config = {db: {user: "admin", port: 5432}}
+    config => {db: {user:}}
+    p user
+    a = (config in {db: {port: Integer}})
+    b = (config in {db: {port: String}})
+    p a, b
+  choices: ["\"admin\"\ntrue\nfalse", "\"admin\"\ntrue\ntrue", "nil\ntrue\nfalse", "\"admin\"\nfalse\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `式 => パターン` は、一致すれば変数を束縛し、一致しなければ `NoMatchingPatternKeyError` などの例外を発生させます。
+    - `式 in パターン` は、一致するかどうかを `true` / `false` で返します（例外は発生しません）。
+
+    ハッシュパターンの `{user:}` は `{user: user}` の省略形で、キー `:user` の値をそのまま変数 `user` に束縛します。
+
+    `in` は代入より優先順位が低いので、`a = config in ...` と書くと `(a = config) in ...` になってしまいます。結果を変数に入れるときはかっこで囲みます。
+
+- cat: 文法
+  topic: deconstruct_keys
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Point
+      def initialize(x, y)
+        @x, @y = x, y
+      end
+      def deconstruct_keys(keys)
+        {x: @x, y: @y}
+      end
+      def deconstruct
+        [@x, @y]
+      end
+    end
+    case Point.new(1, 2)
+    in {x: 0, y:}
+      p [:on_y_axis, y]
+    in [x, y]
+      p [:array, x, y]
+    end
+  choices: ['[:array, 1, 2]', '[:on_y_axis, 2]', '!`NoMatchingPatternError` が発生する', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    自作のクラスもパターンマッチに使えます。
+
+    - ハッシュパターンでは `deconstruct_keys` が呼ばれ、その戻り値のハッシュと照合します。
+    - 配列パターンでは `deconstruct` が呼ばれ、その戻り値の配列と照合します。
+
+    1つ目は `x` が `1` で `0` に一致しないので、2つ目の配列パターンで一致します。
+
+- cat: 文法
+  topic: retry
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    count = 0
+    begin
+      count += 1
+      raise "fail" if count < 3
+      puts "ok #{count}"
+    rescue
+      retry
+    ensure
+      puts "ensure"
+    end
+  choices: ["ok 3\nensure", "ensure\nensure\nok 3\nensure", "ok 1\nensure", "ensure\nok 3"]
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue` 節の中で `retry` を呼ぶと、`begin` の先頭からやり直します。`count` が 3 になるまで2回やり直し、3回目で `ok 3` を出力します。
+
+    `ensure` は `begin` 式全体を抜けるときに1回だけ実行されます。`retry` でやり直すときには実行されません。
+
+- cat: 文法
+  topic: 例外の階層
+  q: '`StandardError` のサブクラス**ではない**ものを2つ選択してください。'
+  choices: ['`NoMethodError`', '`ZeroDivisionError`', '`SystemExit`', '`NotImplementedError`', '`KeyError`']
+  answer: [2, 3]
+  verify: checks
+  checks:
+    - 'exit(!(NoMethodError < StandardError))'
+    - 'exit(!(ZeroDivisionError < StandardError))'
+    - 'exit(!(SystemExit < StandardError))'
+    - 'exit(!(NotImplementedError < StandardError))'
+    - 'exit(!(KeyError < StandardError))'
+  exp: |
+    主な例外クラスの関係は次のとおりです。
+
+    ```
+    Exception
+      ├ ScriptError … LoadError, NotImplementedError, SyntaxError
+      ├ SystemExit（exit で発生）
+      ├ Interrupt / SignalException
+      └ StandardError
+          ├ ArgumentError, TypeError, ZeroDivisionError（ZeroDivisionError は StandardError の直接の子）
+          ├ NameError … NoMethodError
+          ├ IndexError … KeyError, StopIteration
+          └ RuntimeError … FrozenError
+    ```
+
+    `NotImplementedError` は名前に反して `ScriptError` の子なので、クラス指定なしの `rescue` では捕捉されません。
+
+- cat: 文法
+  topic: 例外クラスの自作
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class MyError < StandardError
+      def initialize(msg = "my default")
+        super
+      end
+    end
+    begin
+      raise MyError
+    rescue => e
+      p e.message
+    end
+    begin
+      raise MyError, "custom"
+    rescue => e
+      p e.message
+    end
+  choices: ["\"my default\"\n\"custom\"", "\"MyError\"\n\"custom\"", "\"my default\"\n\"my default\"", "nil\n\"custom\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `raise クラス` は `クラス.new`（またはメッセージがあれば `クラス.new(メッセージ)`）で例外オブジェクトを作ります。
+
+    引数なしの `super` は、受け取った引数をそのまま親の `initialize` に渡します。既定値 `"my default"` が入った `msg` が渡されるので、メッセージは `"my default"` です。`raise MyError, "custom"` では `"custom"` が渡されます。
+
+- cat: 文法
+  topic: refinements
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Shout
+      refine String do
+        def shout = upcase + "!"
+      end
+    end
+    class A
+      using Shout
+      def self.a = "hi".shout
+    end
+    p A.a
+    p "hi".respond_to?(:shout)
+    p "hi".shout
+  choices:
+    - '`"HI!"` と `false` が出力された後、`NoMethodError` が発生する'
+    - '`"HI!"`、`true`、`"HI!"` が出力される'
+    - '1行目の `p A.a` で `NoMethodError` が発生する'
+    - '`"HI!"` と `true` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"HI!\"\nfalse", error: NoMethodError}
+  exp: |
+    `refine` で定義した変更（refinement）は、`using` を書いた場所から、そのクラス定義・ファイルの終わりまでの範囲でだけ有効です。
+
+    `class A` の中で `using` しているので、`A` の中では `shout` が使えますが、クラス定義の外では使えません。`respond_to?` も refinement を見ないので `false` です。
+
+    `using` はメソッドの中では呼べません（`RuntimeError`）。トップレベルかクラス・モジュール定義の直下に書きます。
+
+- cat: 文法
+  topic: キーワード引数とハッシュ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def kw(a, b: 1)
+      [a, b]
+    end
+    h = {b: 2}
+    p kw(h)
+    p kw(1, **h)
+    p kw(1, h)
+  choices:
+    - '`[{:b=>2}, 1]` と `[1, 2]` が出力された後、`ArgumentError` が発生する'
+    - '`[1, 2]` と `[1, 2]` が出力された後、`ArgumentError` が発生する'
+    - '`[{:b=>2}, 1]`、`[1, 2]`、`[1, 2]` が出力される'
+    - '1つ目の `kw(h)` で `ArgumentError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "[{:b=>2}, 1]\n[1, 2]", error: ArgumentError}
+  exp: |
+    Ruby 3.0 から、位置引数とキーワード引数がはっきり分けられました。
+
+    - `kw(h)` … ハッシュは**位置引数** `a` として渡され、`b` は既定値の `1` です。
+    - `kw(1, **h)` … `**` でハッシュをキーワード引数に展開するので `b` は `2` です。
+    - `kw(1, h)` … ハッシュは2つ目の位置引数として扱われますが、位置引数は1つしか受け取れないので `ArgumentError` です。Ruby 2.7 までは自動でキーワード引数に変換されていました。
+
+    ※ `p` でのハッシュの表示は Ruby 3.4 から `{b: 2}` の形に変わりました。
+
+- cat: 文法
+  topic: ブロック引数と分割
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    data = [[1, [2, 3]], [4, [5, 6]]]
+    data.each do |a, (b, c)|
+      print a + b + c, " "
+    end
+    puts
+  choices: ['6 15 ', '1 4 ', '!`TypeError` が発生する', '!文法エラーが発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    ブロック引数でも多重代入と同じようにかっこで分割できます。`[1, [2, 3]]` は `a = 1`、`(b, c) = [2, 3]` となり、合計は `6` です。
+
+    メソッドの仮引数ではこの書き方はできませんが、ブロック引数では使えます。
+
+- cat: 文法
+  topic: 引数の種類の順番
+  q: 'メソッド定義として**文法エラーになる**ものを選択してください。'
+  choices:
+    - 'def m(a, b = 1, *c, d, e:, f: 2, **g, &h); end'
+    - 'def m(a, *b, c = 1); end'
+    - 'def m(*, **, &); end'
+    - 'def m(a, ...); end'
+  cm: true
+  answer: [1]
+  verify: checks
+  checks:
+    - 'begin; eval("def m(a, b = 1, *c, d, e:, f: 2, **g, &h); end"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def m(a, *b, c = 1); end"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def m(*, **, &); end"); exit(false); rescue SyntaxError; exit(true); end'
+    - 'begin; eval("def m(a, ...); end"); exit(false); rescue SyntaxError; exit(true); end'
+  exp: |
+    仮引数は次の順番で書きます。
+
+    `必須引数, 既定値付き引数, *可変長引数, 必須引数, キーワード引数, **可変長キーワード引数, &ブロック引数`
+
+    既定値付きの引数は `*` より**前**にしか置けないので、`def m(a, *b, c = 1)` は文法エラーです。`*`・`**`・`&` を名前なしで書くこと（3.1 で `&` が、3.2 で `*`・`**` の転送が可能に）や、`...` の前に引数を置くことはできます。
+
+- cat: 文法
+  topic: 安全参照演算子
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    user = nil
+    p user.to_a
+    p user&.name
+    p user&.name.length
+  choices:
+    - '`[]` と `nil` が出力された後、`NoMethodError` が発生する'
+    - '`[]`、`nil`、`nil` が出力される'
+    - '`nil`、`nil`、`nil` が出力される'
+    - '1つ目の `p user.to_a` で `NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "[]\nnil", error: NoMethodError}
+  exp: |
+    `obj&.メソッド` は、`obj` が `nil` のときはメソッドを呼ばずに `nil` を返します（ぼっち演算子）。
+
+    ただし、飛ばされるのは `&.` の直後の呼び出し**1つだけ**です。`user&.name.length` は `(user&.name).length`、つまり `nil.length` になり `NoMethodError` が発生します。最後まで安全にするには `user&.name&.length` と書きます。
+
+    `nil.to_a` は `NilClass#to_a` が定義されているので `[]` です（ほかに `nil.to_s` は `""`、`nil.to_i` は `0`）。
+
+- cat: 文法
+  topic: 多重代入
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    a, (b, *c), d = 1, [2, 3, 4], 5
+    p [a, b, c, d]
+    x = y = []
+    x << 1
+    p y
+  choices: ["[1, 2, [3, 4], 5]\n[1]", "[1, [2, 3, 4], nil, 5]\n[]", "[1, 2, [3, 4], 5]\n[]", "[1, 2, 3, 5]\n[1]"]
+  answer: [0]
+  verify: output
+  exp: |
+    多重代入でもかっこで入れ子の分解ができます。`(b, *c)` に `[2, 3, 4]` が対応し、`b = 2`、`c = [3, 4]` です。
+
+    `x = y = []` は右から評価され、`x` と `y` は**同じ配列オブジェクト**を指します。`x << 1` で配列自身が変わるので、`y` からも `[1]` に見えます。

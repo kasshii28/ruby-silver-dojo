@@ -1,0 +1,289 @@
+# 標準添付ライブラリ
+- cat: 標準添付ライブラリ
+  topic: JSON.parse
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "json"
+    s = '{"name": "Ann", "tags": ["a", "b"], "age": null}'
+    h = JSON.parse(s)
+    p h["name"], h[:name]
+    p JSON.parse(s, symbolize_names: true)[:tags]
+    p h["age"]
+  choices: ["\"Ann\"\nnil\n[\"a\", \"b\"]\nnil", "\"Ann\"\n\"Ann\"\n[\"a\", \"b\"]\nnil", "\"Ann\"\nnil\nnil\n\"null\"", '!`JSON::ParserError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `JSON.parse` はオブジェクトをハッシュに変換します。キーは既定で**文字列**なので、`h[:name]` は `nil` です。`symbolize_names: true` を付けるとキーがシンボルになります。
+
+    JSON の `null` は `nil`、`true` / `false` はそのまま、配列は `Array` になります。
+
+- cat: 標準添付ライブラリ
+  topic: to_json と JSON.generate
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "json"
+    data = {name: "Ann", score: 9.5, ok: true, memo: nil}
+    puts data.to_json
+    puts JSON.generate([1, "two", :three])
+  choices: ["{\"name\":\"Ann\",\"score\":9.5,\"ok\":true,\"memo\":null}\n[1,\"two\",\"three\"]", "{:name=>\"Ann\", :score=>9.5, :ok=>true, :memo=>nil}\n[1, \"two\", :three]", "{\"name\":\"Ann\",\"score\":9.5,\"ok\":true,\"memo\":nil}\n[1,\"two\",\"three\"]", "{\"name\":\"Ann\",\"score\":9.5,\"ok\":true}\n[1,\"two\",\"three\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    `require "json"` すると、`Hash#to_json` などのメソッドが使えるようになります。`JSON.generate(obj)` も同じ結果です。
+
+    シンボルは文字列に、`nil` は `null` になります。空白を入れて見やすくしたいときは `JSON.pretty_generate` を使います。
+
+    なお `JSON.dump` / `JSON.load` もありますが、`JSON.load` は信頼できない入力に使うと危険な場合があるため、読み込みには `JSON.parse` を使うのが基本です。
+
+- cat: 標準添付ライブラリ
+  topic: Set
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "set"
+    a = Set[1, 2, 3]
+    b = Set.new([3, 4])
+    p (a | b).size
+    p (a & b).to_a
+    p (a - b).include?(3)
+    p a.add?(3)
+    p a.subset?(Set[1, 2, 3, 4])
+  choices: ["4\n[3]\nfalse\nnil\ntrue", "5\n[3]\nfalse\nnil\ntrue", "4\n[3]\ntrue\nnil\ntrue", "4\n[3]\nfalse\n#<Set: {1, 2, 3}>\ntrue"]
+  answer: [0]
+  verify: output
+  exp: |
+    `Set` は重複のない要素の集まりです。
+
+    - `|`（和集合）、`&`（積集合）、`-`（差集合）、`^`（対称差）が使えます。
+    - `add` は常に自身を返しますが、`add?` は**すでに要素があったときは `nil`** を返します。
+    - `subset?`（`<=`）、`superset?`（`>=`）で包含関係を調べられます。
+
+    Ruby 3.2 からは `require "set"` を書かなくても `Set` が使えますが、試験範囲の Ruby 3.1 では必要です。
+
+- cat: 標準添付ライブラリ
+  topic: Date の計算
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "date"
+    d = Date.new(2024, 1, 31)
+    puts d + 1
+    puts d >> 1
+    puts d.next_month(2)
+    p (Date.new(2024, 3, 1) - d).class
+    p (Date.new(2024, 3, 1) - d).to_i
+  choices: ["2024-02-01\n2024-02-29\n2024-03-31\nRational\n30", "2024-02-01\n2024-03-02\n2024-03-31\nInteger\n30", "2024-02-01\n2024-02-29\n2024-03-31\nInteger\n30", "2024-02-01\n2024-02-28\n2024-03-31\nRational\n29"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Date + n` / `Date - n` は n **日**後・前です。
+    - `>> n`（`next_month(n)`）は n か月後です。2月31日はないので、その月の末日（2024年はうるう年なので2月29日）になります。
+    - `Date` どうしの引き算は日数の差を `Rational` で返します（`(30/1)`）。整数にするには `to_i` を使います。
+
+- cat: 標準添付ライブラリ
+  topic: Date.parse と strftime
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "date"
+    d = Date.parse("2024-07-04")
+    puts d.strftime("%Y/%m/%d %a")
+    p d.yday, d.wday, d.leap?
+    p Date.valid_date?(2023, 2, 29)
+  choices: ["2024/07/04 Thu\n186\n4\ntrue\nfalse", "2024/07/04 Thu\n186\n4\ntrue\ntrue", "2024/7/4 Thu\n186\n4\ntrue\nfalse", "2024/07/04 Thu\n185\n5\nfalse\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `Date.parse` は文字列から日付を推測して作ります（書式を指定するなら `Date.strptime`）。
+    - `strftime` の `%Y` は4桁の年、`%m` / `%d` は2桁の月・日、`%a` は曜日の略称です。
+    - `yday` は年の何日目か、`wday` は曜日の番号（日曜が `0`）、`leap?` はうるう年かどうかです。
+    - `Date.valid_date?` は日付として正しいかを確かめます。2023年はうるう年ではないので `false` です（`Date.new(2023, 2, 29)` は `Date::Error`）。
+
+- cat: 標準添付ライブラリ
+  topic: Time の計算
+  q: 次のコードを実行するとどうなりますか。（タイムゾーンは日本時間 JST とします）
+  code: |
+    t = Time.new(2024, 12, 31, 23, 59, 30)
+    puts t + 60
+    p (Time.new(2025, 1, 1) - t)
+    puts t.strftime("%H:%M:%S %z")
+    p t.to_a.size > 0, t.monday?
+  choices: ["2025-01-01 00:00:30 +0900\n30.0\n23:59:30 +0900\ntrue\nfalse", "2024-12-31 23:60:30 +0900\n30.0\n23:59:30 +0900\ntrue\nfalse", "2025-01-01 00:00:30 +0900\n30\n23:59:30 +0900\ntrue\nfalse", "2025-01-01 00:59:30 +0900\n30.0\n23:59:30 +0900\ntrue\nfalse"]
+  answer: [0]
+  verify: output
+  env: {TZ: Asia/Tokyo}
+  exp: |
+    `Time` の足し算・引き算は**秒**単位です（`Date` は日単位）。60秒後は年をまたいで `2025-01-01 00:00:30` になります。
+
+    `Time` どうしの差は秒数の `Float` です。`%z` はタイムゾーンのオフセット（`+0900`）です。2024年12月31日は火曜日なので `monday?` は `false` です。
+
+- cat: 標準添付ライブラリ
+  topic: Forwardable の def_delegators
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "forwardable"
+    class Playlist
+      extend Forwardable
+      def_delegators :@songs, :size, :each, :<<
+      def_delegator :@songs, :first, :opening
+      include Enumerable
+      def initialize = @songs = []
+    end
+    list = Playlist.new
+    list << "a" << "b"
+    p list.size
+    p list.opening
+    p list.map(&:upcase)
+  choices: ["2\n\"a\"\n[\"A\", \"B\"]", '!`NoMethodError` が発生する', "1\n\"a\"\n[\"A\"]", "2\n\"b\"\n[\"A\", \"B\"]"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `def_delegators 委譲先, メソッド名...` … 複数のメソッドをまとめて委譲します。
+    - `def_delegator 委譲先, メソッド名, 別名` … 別の名前で委譲できます。`list.opening` は `@songs.first` です。
+
+    `<<` は委譲先（配列）の戻り値をそのまま返すので、`list << "a"` は**配列**を返し、続く `<< "b"` は配列に直接追加されます。結果として同じ配列に2つ入ります。
+
+    `each` を委譲して `Enumerable` を `include` すれば、`map` などもそのまま使えます。
+
+- cat: 標準添付ライブラリ
+  topic: Singleton の制約
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "singleton"
+    class Config
+      include Singleton
+      attr_accessor :env
+    end
+    Config.instance.env = "prod"
+    p Config.instance.env
+    p Config.instance.equal?(Config.instance)
+    Config.instance.clone
+  choices:
+    - '`"prod"` と `true` が出力された後、`TypeError` が発生する'
+    - '`"prod"` と `true` が出力され、エラーは発生しない'
+    - '`nil` と `true` が出力された後、`TypeError` が発生する'
+    - '`"prod"` と `false` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"prod\"\ntrue", error: TypeError}
+  exp: |
+    `Singleton` を `include` したクラスは、`instance` が常に同じオブジェクトを返します。1回目の `instance` で作られたオブジェクトが使い回されるので、設定した `env` も残っています。
+
+    唯一性を守るため、`new` は private になり、`clone` と `dup` は `TypeError`（`can't clone instance of singleton`）を発生させます。
+
+- cat: 標準添付ライブラリ
+  topic: StringIO
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "stringio"
+    io = StringIO.new("line1\nline2\n")
+    p io.gets
+    p io.read
+    p io.eof?
+    out = StringIO.new
+    out.puts "hello"
+    out.print 1, 2
+    p out.string
+  choices: ["\"line1\\n\"\n\"line2\\n\"\ntrue\n\"hello\\n12\"", "\"line1\"\n\"line2\"\ntrue\n\"hello\\n12\"", "\"line1\\n\"\n\"line1\\nline2\\n\"\nfalse\n\"hello\\n12\"", "\"line1\\n\"\n\"line2\\n\"\ntrue\n\"hello\\n1\\n2\\n\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `StringIO` は文字列を `IO`（ファイル）のように読み書きできるクラスです。テストで標準出力の代わりに使うなど、ファイルを作らずに入出力を扱えます。
+
+    - `gets` は1行（改行付き）を読みます。`read` はそこから最後までを読みます。
+    - 書き込んだ内容は `string` で取り出せます。`print` は引数の間に区切りを入れないので `12` です。
+
+- cat: 標準添付ライブラリ
+  topic: ERB
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "erb"
+    template = ERB.new(<<~T, trim_mode: "-")
+      <%- items.each do |i| -%>
+      * <%= i %>
+      <%- end -%>
+      total: <%= items.size %><%# comment %>
+    T
+    items = %w[a b]
+    puts template.result(binding)
+  choices: ["* a\n* b\ntotal: 2", "<%- items.each do |i| -%>\n* a\n* b\ntotal: 2", "\n* a\n\n* b\n\ntotal: 2", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    ERB は文字列の中に Ruby のコードを埋め込むテンプレートです。
+
+    - `<%= 式 %>` … 式の値を埋め込みます。
+    - `<% 文 %>` … 実行するだけで、何も出力しません。
+    - `<%# %>` … コメントです。
+    - `trim_mode: "-"` のとき、`<%-` は行頭の空白を、`-%>` は直後の改行を取り除きます。
+
+    `result(binding)` で、その場所のローカル変数（`items`）を見えるようにしてテンプレートを評価します。
+
+- cat: 標準添付ライブラリ
+  topic: Observer
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    require "observer"
+    class Ticker
+      include Observable
+      def tick(price)
+        changed
+        notify_observers(:price, price)
+      end
+    end
+    class Logger
+      def update(kind, value) = puts("#{kind}=#{value}")
+    end
+    t = Ticker.new
+    t.add_observer(Logger.new)
+    t.tick(100)
+    t.notify_observers(:price, 200)
+  choices: ['price=100', "price=100\nprice=200", '!何も出力されない', '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `Observable` を `include` すると、Observer パターン（変更の通知）を実装できます。
+
+    - `add_observer(obj)` … 通知先を登録します。既定で `obj.update(...)` が呼ばれます（`add_observer(obj, :メソッド名)` で変更可能）。
+    - `changed` … 「変更あり」の印を付けます。
+    - `notify_observers(...)` … 印が付いているときだけ通知し、印を消します。
+
+    2回目の `notify_observers` は、直前に `changed` を呼んでいないので何も通知されません。
+
+    ※ `observer` は Ruby 3.4 から標準添付ではなくなり、gem として別途インストールが必要になりました。
+
+- cat: 標準添付ライブラリ
+  topic: pp と inspect
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    x = pp({a: 1})
+    p x
+    y = p
+    p y
+    z = puts("hi")
+    p z
+  choices: ["{:a=>1}\n{:a=>1}\nnil\nhi\nnil", "{:a=>1}\nnil\nnil\nhi\nnil", "{:a=>1}\n{:a=>1}\n[]\nhi\n\"hi\"", "{:a=>1}\n{:a=>1}\nnil\nhi\n\"hi\""]
+  answer: [0]
+  verify: output
+  exp: |
+    - `p` と `pp` は、引数をそのまま**返します**（引数が複数なら配列、なしなら `nil`）。そのため、式の途中に挟んでデバッグ出力できます。
+    - `puts` と `print` は常に `nil` を返します。
+
+    `pp` は長いデータを見やすく改行して表示します。Ruby 2.5 からは `require "pp"` なしで使えます。
+
+- cat: 標準添付ライブラリ
+  topic: Time.parse と Time#iso8601
+  q: 次のコードを実行するとどうなりますか。（タイムゾーンは日本時間 JST とします）
+  code: |
+    require "time"
+    t = Time.parse("2024-05-06 07:08:09")
+    puts t.iso8601
+    puts Time.iso8601("2024-05-06T07:08:09Z").utc?
+    puts Time.strptime("06/05/2024", "%d/%m/%Y").month
+  choices: ["2024-05-06T07:08:09+09:00\ntrue\n5", "2024-05-06T07:08:09Z\ntrue\n5", "2024-05-06T07:08:09+09:00\nfalse\n6", "2024-05-06 07:08:09 +0900\ntrue\n5"]
+  answer: [0]
+  verify: output
+  env: {TZ: Asia/Tokyo}
+  exp: |
+    `require "time"` で、`Time.parse`・`Time.strptime`・`Time.iso8601`・`Time#iso8601` などが使えるようになります。
+
+    - タイムゾーンのない文字列を `Time.parse` すると、ローカルのタイムゾーン（ここでは `+09:00`）として扱われます。
+    - 末尾の `Z` は UTC を表すので、`utc?` は `true` です。
+    - `strptime` は書式どおりに読むので、`%d/%m/%Y` では `06` が日、`05` が月です。

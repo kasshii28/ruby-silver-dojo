@@ -1,0 +1,1388 @@
+# 公式模擬問題（Ruby Association 公開の Gold version 3 サンプル問題）
+# 出典: https://github.com/ruby-association/prep-test/blob/version3/gold_ja.md （commit bcbfe44）
+# 問題文と選択肢は出典にもとづき、誤記を修正しています。解説はこのサイトのオリジナルです。
+# `official` は出典の問題番号。修正点の一覧は docs/official-prep-test-gold.md を参照。
+- cat: オブジェクト指向
+  official: 1
+  topic: define_methodとclass_eval
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    class Stack
+      def initialize
+        @contents = []
+      end
+
+      __(1)__
+    end
+
+    stack = Stack.new
+    stack.push("foo")
+    stack.push("bar")
+    p stack.pop
+  result: '"bar"'
+  choices:
+    - |-
+      [:push, :pop].each do |name|
+        define_method(name) do |*args|
+          @contents.send(name, *args)
+        end
+      end
+    - |-
+      for name in [:push, :pop]
+        define_method(name) do |*args|
+          @contents.send(name, *args)
+        end
+      end
+    - |-
+      [:push, :pop].each do |name|
+        instance_eval(<<-EOF)
+          def #{name}(*args)
+            @contents.send(:#{name}, *args)
+          end
+        EOF
+      end
+    - |-
+      [:push, :pop].each do |name|
+        class_eval(<<-EOF)
+          def #{name}(*args)
+            @contents.send(:#{name}, *args)
+          end
+        EOF
+      end
+  answer: [0, 3]
+  verify: blank
+  exp: |
+    クラス定義の中で `define_method` や `class_eval` + `def` を使うと、`Stack` のインスタンスメソッドを定義できます。
+
+    - `each` のブロック引数 `name` は繰り返しのたびに新しい変数になるので、`push` と `pop` はそれぞれ自分の名前を覚えたクロージャになります。
+    - `for` はブロックを作らず、変数 `name` は1つだけです。ループが終わると `name` は `:pop` なので、`push` も `@contents.send(:pop)` を呼んでしまい、結果は `nil` になります。
+    - `instance_eval` の中の `def` は、レシーバ（ここではクラス `Stack` そのもの）の**特異メソッド**を定義します。`Stack.push` はできても `stack.push` は `NoMethodError` です。
+    - `class_eval` の中の `def` はインスタンスメソッドを定義します。
+
+- cat: オブジェクト指向
+  official: 2
+  topic: includeとprependの順序
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    module I
+    end
+
+    module P
+    end
+
+    class C
+      include I
+      prepend P
+    end
+
+    p C.ancestors
+  choices:
+    - '[P, C, I, Object, Kernel, BasicObject]'
+    - '[C, P, I, Object, Kernel, BasicObject]'
+    - '[C, I, Object, Kernel, BasicObject, P]'
+    - '[P, I, C, Object, Kernel, BasicObject]'
+  answer: [0]
+  verify: output
+  exp: |
+    `prepend` したモジュールはクラスの**前**に、`include` したモジュールはクラスの**後ろ**（スーパークラスとの間）に入ります。
+
+    メソッド探索はこの配列の先頭から順に行われるので、`P` のメソッドは `C` 自身のメソッドより先に見つかります。`prepend` したモジュールから `super` を呼ぶと `C` のメソッドが呼ばれる、というのがよく使われる形です。
+
+- cat: 文法
+  official: 3
+  topic: Rationalリテラル
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    x = __(1)__
+    p x + 1
+  result: '(4/3)'
+  choices: ['1 / 3r', '1 / 3R', '1 / %r(3)', '1 / 3']
+  answer: [0]
+  verify: blank
+  exp: |
+    数値リテラルの末尾に小文字の `r` を付けると `Rational`（有理数）になります。`1 / 3r` は `(1/3)` で、`+ 1` すると `(4/3)` です。
+
+    - `3R` という書き方はなく、文法エラーです。
+    - `%r(3)` は正規表現 `/3/` なので、`Integer#/` に渡すと例外になります。
+    - `1 / 3` は整数の除算で `0` になり、`p` の結果は `1` です。
+
+    同じく末尾の `i` は虚数（`Complex`）です。`3ri` のように組み合わせることもできます。
+
+- cat: 組み込みライブラリ
+  official: 4
+  topic: Enumerator::Lazy
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    p ("aaaaaa".."zzzzzz").lazy.select { |e| e.end_with?("f") }.__(1)__
+  result: '["aaaaaf", "aaaabf", "aaaacf"]'
+  choices: ['first(3)', 'take(3)', 'take(3).force', 'first(3).force']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    `lazy` で作った `Enumerator::Lazy` は、要素が本当に必要になるまで計算を遅らせます。
+
+    - `take(3)` は `Lazy` 版が定義されていて、また `Enumerator::Lazy` を返すだけです。`p` するとオブジェクトの中身が表示されるだけで、配列にはなりません。
+    - `take(3).force`（`force` は `to_a` の別名）で、はじめて評価されて配列になります。
+    - `first(3)` は値を取り出すメソッドなので、その場で評価して配列を返します。
+    - `first(3).force` は、配列に `force` メソッドがないので `NoMethodError` です。
+
+    **公式版からの修正**: 選択する数が「(複数選択)」となっていたので、正解の数に合わせて「(2つ選択)」にしました。
+
+- cat: 文法
+  official: 5
+  topic: 引数の転送（...）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    def round(n, __(1)__)
+      n.round(__(1)__)
+    end
+
+    p round(2.5, half: :even)
+  result: '2'
+  choices: ['*', '&', '..', '...']
+  answer: [3]
+  verify: blank
+  exp: |
+    仮引数の `...` は「残りの引数を全部」受け取り、呼び出し側の `...` でそのまま別のメソッドに渡します。位置引数・キーワード引数・ブロックのすべてが転送されます。Ruby 3.0 から、`n, ...` のように前に通常の引数を置けるようになりました。
+
+    `2.5.round(half: :even)` は偶数への丸め（銀行丸め）なので `2` になります。
+
+    - `&` はブロックだけを転送するので、`half: :even` を受け取れず `ArgumentError` です。
+    - `*` は Ruby 3.1 では文法エラーです（無名の `*` の転送は 3.2 から）。3.2 以降でも位置引数だけの転送なので、キーワード引数はハッシュとして渡されてしまい、正しく動きません。
+    - `..` という引数の書き方はありません。
+
+- cat: オブジェクト指向
+  official: 6
+  topic: privateとself
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class A
+      def foo
+        self.bar
+      end
+
+      private
+
+      def bar
+        "baz"
+      end
+
+      def self.bar
+        "quux"
+      end
+    end
+
+    puts A.new.foo
+  choices: ['baz', 'quux', '!文法エラーが発生する', '!例外が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    Ruby 2.7 から、private メソッドでもレシーバに `self` を**そのまま書いた**場合は呼び出せるようになりました。インスタンスメソッドの中の `self` はインスタンスなので、インスタンスメソッド `bar` が呼ばれて `baz` です。
+
+    `def self.bar` はクラスメソッドなので、ここでは関係ありません。また `private` はその後ろの `def self.bar` には効きません（クラスメソッドを private にするには `private_class_method` を使います）。
+
+- cat: オブジェクト指向
+  official: 7
+  topic: class << self
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    class Greeter
+      class << self
+        def hello
+          puts "Hello there!"
+        end
+      end
+    end
+
+    __(1)__
+  result: 'Hello there!'
+  choices: ['Greeter.new.hello', 'Greeter.hello', 'Greeter.new.class.hello', 'Greeter.class.new.hello']
+  answer: [1, 2]
+  verify: blank
+  exp: |
+    `class << self` の中で定義したメソッドは、`Greeter` の特異メソッド（クラスメソッド）です。
+
+    - `Greeter.hello` … そのまま呼べます。
+    - `Greeter.new.class` は `Greeter` なので、`Greeter.new.class.hello` も同じです。
+    - `Greeter.new.hello` … インスタンスには `hello` がありません。
+    - `Greeter.class` は `Class` で、`Class.new` は名前のない新しいクラスなので `hello` はありません。
+
+- cat: 文法
+  official: 8
+  topic: ブロックの受け取り方
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    __(1)__
+
+    p multiply_by(4) { 2 + 3 }
+  result: '20'
+  choices:
+    - |-
+      def multiply_by(n, &block)
+        n * block.call
+      end
+    - |-
+      def multiply_by(n, &block)
+        n * block
+      end
+    - |-
+      def multiply_by(n)
+        n * yield
+      end
+    - |-
+      def multiply_by(n)
+        n * yield.call
+      end
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    ブロックを実行する方法は2つあります。
+
+    - `yield` でブロックを呼ぶ。`yield` の値はブロックの値（ここでは `5`）です。
+    - `&block` でブロックを `Proc` オブジェクトとして受け取り、`block.call` で呼ぶ。
+
+    `n * block` は `Integer` と `Proc` の掛け算になるので `TypeError`、`yield.call` は `5.call` になるので `NoMethodError` です。
+
+- cat: 文法
+  official: 9
+  topic: ブロックへの引数
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    __(1)__
+
+    p sum { |e| e << 1 << 5 << 7 }
+  result: '13'
+  choices:
+    - |-
+      def sum(&block)
+        array = []
+
+        block(array)
+
+        array.reduce(:+)
+      end
+    - |-
+      def sum(&block)
+        array = []
+
+        block.call(array)
+
+        array.reduce(:+)
+      end
+    - |-
+      def sum
+        array = []
+
+        yield(array)
+
+        array.reduce(:+)
+      end
+    - |-
+      def sum
+        array = []
+
+        yield.call(array)
+
+        array.reduce(:+)
+      end
+  answer: [1, 2]
+  verify: blank
+  exp: |
+    ブロックに引数を渡すには `yield(array)` または `block.call(array)` と書きます。ブロックの中で `array` に `1, 5, 7` が追加され、`reduce(:+)` で合計 `13` になります。
+
+    - `block(array)` は、`block` という名前の**メソッド**を呼ぼうとするので `NoMethodError` です。`Proc` を呼ぶには `call`（または `.()` や `[]`）が必要です。
+    - `yield.call(array)` は、まず引数なしで `yield` するのでブロック引数 `e` が `nil` になり、`nil << 1` で `NoMethodError` です。
+
+- cat: オブジェクト指向
+  official: 10
+  topic: クラス変数と継承
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class A
+      @@x = 1
+    end
+
+    class B < A
+      def self.x
+        @@x
+      end
+    end
+
+    class C < A
+      def self.inc
+        @@x += 1
+      end
+    end
+
+    C.inc
+    p B.x
+  choices: ['1', '2', '3', '!例外が発生する']
+  answer: [1]
+  verify: output
+  exp: |
+    クラス変数はそのクラスとすべてのサブクラスで**1つの変数を共有**します。`C.inc` で `A` の `@@x` が `2` になり、`B.x` も同じ `@@x` を読むので `2` です。
+
+    クラスごとに別の値を持たせたいときは、クラス変数ではなくクラスのインスタンス変数（クラス定義の直下やクラスメソッドの中の `@x`）を使います。
+
+- cat: 組み込みライブラリ
+  official: 11
+  topic: Proc#call
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    words = ["apple", "banana", "cabbage"]
+    pop = Proc.new { words.pop }
+    3.times{ puts __(1)__ }
+  result: |-
+    cabbage
+    banana
+    apple
+  choices: ['pop.load', 'pop.send', 'pop.run', 'pop.call', 'pop.eval']
+  answer: [3]
+  verify: blank
+  exp: |
+    `Proc` を実行するのは `call` です。同じ意味で `pop.()`、`pop[]`、`pop.yield`、`pop === x` も使えます。
+
+    `Proc` はクロージャなので、作ったときのローカル変数 `words` を覚えていて、呼ぶたびに同じ配列から1つずつ取り出します。
+
+    `send` はメソッド名を受け取って呼び出すメソッドで、引数なしでは `ArgumentError` です。`load`・`run`・`eval` は `Proc` のメソッドではありません。
+
+- cat: 組み込みライブラリ
+  official: 12
+  topic: Procの作り方
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    words = ["apple", "banana", "cabbage"]
+    pop = __(1)__{ words.pop }
+    3.times{ puts pop.call }
+  result: |-
+    cabbage
+    banana
+    apple
+  choices: ['Proc.new', 'Block.new', 'lambda', 'Lambda.new']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    ブロックから `Proc` オブジェクトを作るには `Proc.new { }`、`proc { }`、`lambda { }`、`-> { }` を使います。`Block` や `Lambda` というクラスはありません。
+
+    `lambda` で作ったものも `Proc` クラスのインスタンスですが、次の点が違います。
+
+    - 引数の数を厳密にチェックする（`Proc.new` は余分を捨て、足りなければ `nil`）
+    - `return` で lambda 自身から抜ける（`Proc.new` の `return` は定義したメソッドから抜ける）
+
+- cat: 文法
+  official: 13
+  topic: ラムダリテラル
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    add = __(1)__
+    puts add.call("hello")
+  result: 'HELLO'
+  choices: ['->(e) { e.upcase }', '\(e) -> { e.upcase }', '-> { (e) e.upcase }', '-> { |e| e.upcase }']
+  answer: [0]
+  verify: blank
+  exp: |
+    ラムダリテラルは `->(引数) { 本体 }` の形です。引数は `->` の直後の丸かっこに書きます（かっこは省略して `-> e { }` とも書けます）。
+
+    `lambda { |e| ... }` と同じ意味ですが、`-> { |e| ... }` のように両方の書き方を混ぜることはできません。
+
+- cat: 文法
+  official: 14
+  topic: define_methodとProc
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    __(1)__
+      x + y
+    end
+
+    p add(1, 2)
+  result: '3'
+  choices: ['add = ->(x, y) do', 'add = lambda do |x, y|', 'add = Proc.new do |x, y|', 'define_method(:add) do |x, y|']
+  answer: [3]
+  verify: blank
+  exp: |
+    `add(1, 2)` はメソッド呼び出しの形なので、`add` という**メソッド**が必要です。トップレベルの `define_method` は `Object` にメソッドを定義するので、`add(1, 2)` で呼べます。
+
+    ほかの3つは `Proc` を作ってローカル変数 `add` に入れるだけです。変数に入った `Proc` は `add.call(1, 2)` や `add.(1, 2)`、`add[1, 2]` で呼ぶ必要があり、`add(1, 2)` と書くとメソッドを探して `NoMethodError` になります。
+
+- cat: 文法
+  official: 15
+  topic: ヒアドキュメント（<<~）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    def reader_method(s)
+      <<~EOF
+        def #{s}
+          @#{s}
+        end
+      EOF
+    end
+
+    print reader_method("foo")
+  choices:
+    - "    def foo\n      @foo\n    end"
+    - "  def foo\n    @foo\n  end"
+    - "def foo\n  @foo\nend"
+    - '!文法エラーが発生する'
+  answer: [2]
+  verify: output
+  exp: |
+    `<<~` のヒアドキュメントは、各行から**いちばん浅いインデントの分**だけ先頭の空白を取り除きます。ここでは `def` の行の4文字分が除かれ、`@foo` の行は2文字のインデントが残ります。
+
+    - `<<-` は終端の識別子をインデントできるだけで、本文の空白はそのまま残ります。
+    - `<<` は終端の識別子も行頭に書く必要があります。
+
+- cat: 組み込みライブラリ
+  official: 16
+  topic: cloneとdup
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    obj = Object.new
+
+    def obj.hello
+      puts "Hi!"
+    end
+
+    copy = __(1)__
+
+    copy.hello
+  result: 'Hi!'
+  choices: ['Marshal.load(Marshal.dump(obj))', 'obj.dup', 'obj.clone', 'obj.copy']
+  answer: [2]
+  verify: blank
+  exp: |
+    `clone` は特異メソッドと frozen 状態もコピーしますが、`dup` はどちらもコピーしません。そのため `obj.dup.hello` は `NoMethodError` です。
+
+    - `Marshal.dump` は特異メソッドを持つオブジェクトをシリアライズできず、`TypeError` になります。
+    - `copy` というメソッドはありません。
+
+- cat: オブジェクト指向
+  official: 17
+  topic: to_s
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    class ShoppingList
+      def initialize
+        @items = []
+      end
+
+      def add_item(item)
+        @items << item
+      end
+
+      def __(1)__
+        @items.map { |e| "- #{e}" }.join("\n")
+      end
+    end
+
+    list = ShoppingList.new
+
+    list.add_item("Milk")
+    list.add_item("Bread")
+    list.add_item("Eggs")
+
+    puts list
+  result: |-
+    - Milk
+    - Bread
+    - Eggs
+  choices: ['to_s', 'to_str', 'inspect', 'puts']
+  answer: [0]
+  verify: blank
+  exp: |
+    `puts` はオブジェクトを文字列にするときに `to_s` を呼びます。`to_s` を定義し直すと、`puts` や式展開 `"#{list}"` での表示を変えられます。
+
+    `to_str` は「文字列として振る舞えるオブジェクト」であることを示す暗黙の変換用で、`puts` の表示には使われません。`inspect` は `p` が使うメソッドです。
+
+- cat: オブジェクト指向
+  official: 18
+  topic: inspect
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    class ShoppingList
+      def initialize
+        @items = []
+      end
+
+      def add_item(item)
+        @items << item
+      end
+
+      def __(1)__
+        "ShoppingList:\n  @items: #{@items.inspect}"
+      end
+    end
+
+    list = ShoppingList.new
+
+    list.add_item("Milk")
+    list.add_item("Bread")
+    list.add_item("Eggs")
+
+    p list
+  result: |-
+    ShoppingList:
+      @items: ["Milk", "Bread", "Eggs"]
+  choices: ['to_s', 'to_str', 'inspect', 'p']
+  answer: [2]
+  verify: blank
+  exp: |
+    `p` は引数の `inspect` の結果を出力します。`inspect` を定義し直すと、`p` やデバッグ表示での見え方を変えられます。
+
+    `to_s` を定義しても `p` の表示は変わりません（`p` は `#<ShoppingList:0x... @items=[...]>` のような既定の表示のままです）。
+
+- cat: 組み込みライブラリ
+  official: 19
+  topic: 終端のない範囲とlazy
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    p __(1)__.flat_map {|z|
+      (1..z).flat_map {|x|
+        (x..z).select {|y|
+          x**2 + y**2 == z**2
+        }.map {|y|
+          [x, y, z]
+        }
+      }
+    }.take(3).to_a
+  result: '[[3, 4, 5], [6, 8, 10], [5, 12, 13]]'
+  choices: ['(1..-1).delay', '(1..).delay', '(1..-1).lazy', '(1..).lazy']
+  answer: [3]
+  verify: blank
+  exp: |
+    `(1..)` は終端のない範囲（endless range）で、1, 2, 3, … と限りなく続きます。そのまま `flat_map` すると終わらないので、`lazy` で必要な分だけ計算するようにし、`take(3).to_a` で3つ取り出したところで止めます。
+
+    `(1..-1)` は 1 から -1 までの**空の範囲**で、無限の範囲ではありません（配列の添字の `-1` とは意味が違います）。`delay` というメソッドはありません。
+
+- cat: 組み込みライブラリ
+  official: 20
+  topic: filter_map
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    ary = ["foo", "bar", nil, "baz"]
+
+    p ary.__(1)__ { |i|
+      i&.upcase
+    }
+  result: '["FOO", "BAR", "BAZ"]'
+  choices: ['map', 'filter_map', 'collect', 'collect_compact']
+  answer: [1]
+  verify: blank
+  exp: |
+    `filter_map` は、ブロックの値のうち**真のものだけ**を集めた配列を返します。`map { }.compact` に近い動きですが、`false` も取り除かれる点が違います。
+
+    `i&.upcase` は「`i` が `nil` なら `nil`、そうでなければ `i.upcase`」です（ぼっち演算子）。`map` と `collect` では `nil` が残って `["FOO", "BAR", nil, "BAZ"]` になります。`collect_compact` というメソッドはありません。
+
+- cat: 文法
+  official: 21
+  topic: 多重代入とsplat
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    a, b, *c = ["apple", "banana", "carrot", "daikon"]
+
+    p c
+  choices: ['["apple", "banana", "carrot", "daikon"]', '"carrot"', '["carrot"]', '["carrot", "daikon"]']
+  answer: [3]
+  verify: output
+  exp: |
+    多重代入で `*` を付けた変数は、ほかの変数に割り当てた**残りすべて**を配列で受け取ります。`a` が `"apple"`、`b` が `"banana"` で、`c` は残りの `["carrot", "daikon"]` です。
+
+    残りが1つでも配列（`["carrot"]`）、なければ空配列 `[]` になります。
+
+    **公式版からの修正**: 選択する数が書かれていなかったので「(1つ選択)」を追加しました。
+
+- cat: 文法
+  official: 22
+  topic: 可変長引数
+  q: 以下の実行結果を出力するコードを選択してください。(1つ選択)
+  result: '[["apple", "banana", "carrot"]]'
+  choices:
+    - |-
+      def fx(*args)
+        p(args)
+      end
+      fx(*["apple", "banana", "carrot"])
+    - |-
+      def fx(*args)
+        p(args)
+      end
+      fx(["apple", "banana", "carrot"])
+    - |-
+      def fx(*args)
+        p(args)
+      end
+      fx("apple", "banana", "carrot")
+    - |-
+      def fx(*args)
+        p(*args)
+      end
+      fx(["apple", "banana", "carrot"])
+  answer: [1]
+  verify: blank
+  exp: |
+    仮引数の `*args` は、渡された引数をまとめて1つの配列にします。配列を1つ渡すと「配列が1つ入った配列」になり、`[["apple", "banana", "carrot"]]` です。
+
+    - 呼び出し側の `*[...]` は配列を展開して3つの引数として渡すので、`args` は `["apple", "banana", "carrot"]` です。3つの文字列を直接渡す場合も同じです。
+    - `p(*args)` は `p(["apple", "banana", "carrot"])` と同じなので、外側の `[]` は付きません。
+
+- cat: 文法
+  official: 23
+  topic: 番号指定パラメータ
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    p ["foo", "bar", "baz"].map { __(1)__.upcase }
+  result: '["FOO", "BAR", "BAZ"]'
+  choices: ['_1', '$1', '$_', '@1']
+  answer: [0]
+  verify: blank
+  exp: |
+    Ruby 2.7 から、ブロック引数を書かずに `_1`, `_2`, … で参照できます（番号指定パラメータ）。`{ _1.upcase }` は `{ |s| s.upcase }` と同じです。
+
+    - `$1` は直前の正規表現マッチの1番目のグループです。
+    - `$_` は `gets` などで最後に読んだ行です。
+    - `@1` は数字で始まるインスタンス変数名なので文法エラーです。
+
+    Ruby 3.4 からは `it` も使えます（試験範囲外）。
+
+- cat: 文法
+  official: 24
+  topic: 必須キーワード引数
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    def fx(a:, b: "apple")
+      p a
+      p b
+    end
+
+    fx(b: "banana")
+  choices: ["nil\n\"apple\"", "nil\n\"banana\"", '!文法エラーが発生する', '!例外が発生する']
+  answer: [3]
+  verify: run
+  expect: {error: ArgumentError}
+  exp: |
+    `a:` のように既定値のないキーワード引数は**必須**です。省略して呼ぶと `ArgumentError (missing keyword: :a)` が発生します。
+
+    `b: "apple"` は既定値付きなので省略できます。
+
+    **公式版からの修正**: 選択する数が書かれていなかったので「(1つ選択)」を追加しました。また、選択肢 A・B の `p` の出力は文字列に `""` が付くので、`"apple"` のように表記しています（公式版は `apple`。正解は変わりません）。
+
+- cat: 文法
+  official: 25
+  topic: 可変長キーワード引数
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(3つ選択)'
+  code: |
+    def add(x:, y:, **params)
+      z = x + y
+
+      params[:round] ? z.round : z
+    end
+
+    __(1)__
+  result: '7'
+  choices:
+    - 'p add(x: 2.75, y: 5.25, round: true)'
+    - 'p add(x: 3.75, y: 3, round: true)'
+    - 'options = {:round => true}; p add(x: 3.75, y: 3, **options)'
+    - 'p add(x: 3, y: 4)'
+    - 'p add(x: 7)'
+  answer: [1, 2, 3]
+  verify: blank
+  exp: |
+    `**params` は、名前の決まっていないキーワード引数をハッシュで受け取ります。呼び出し側の `**options` はハッシュを展開してキーワード引数として渡します。
+
+    - `2.75 + 5.25` は `8.0` で、`round` すると `8` です。
+    - `3.75 + 3` は `6.75` で、`round` すると `7` です（B・C）。
+    - `3 + 4` は `7`。`round` がないので `params[:round]` は `nil` で、そのまま `7` を返します（D）。
+    - `y:` は必須なので、`add(x: 7)` は `ArgumentError` です。
+
+- cat: オブジェクト指向
+  official: 26
+  topic: クラスのインスタンス変数
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    class Speaker
+      @message = "Hello!"
+
+      class << self
+        @message = "Howdy!"
+
+        def speak
+          @message
+        end
+      end
+    end
+
+    __(1)__
+  result: 'Hello!'
+  choices:
+    - 'puts Speaker.speak'
+    - 'puts Speaker.singleton_class.speak'
+    - 'puts Speaker.instance_variable_get(:@message)'
+    - 'puts Speaker.singleton_class.instance_variable_get(:@message)'
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    インスタンス変数は「そのときの `self`」に属します。
+
+    - クラス定義の直下の `@message` は `self` が `Speaker` なので、**`Speaker` のインスタンス変数**（`"Hello!"`）です。
+    - `class << self` の直下は `self` が `Speaker` の特異クラスなので、**特異クラスのインスタンス変数**（`"Howdy!"`）です。
+    - `speak` は `Speaker.speak` として呼ばれ、そのときの `self` は `Speaker` なので `"Hello!"` を返します。
+
+    `Speaker.singleton_class.speak` は特異クラスの特異メソッドを探すので `NoMethodError`、D は `"Howdy!"` を出力します。
+
+- cat: オブジェクト指向
+  official: 27
+  topic: 特異クラスのインスタンス変数
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class Speaker
+      @message = "Hello!"
+
+      class << self
+        @message = "Howdy!"
+      end
+    end
+
+    class << Speaker
+      p @message
+    end
+  choices: ['"Hello!"', '"Howdy!"', 'nil', '!文法エラーが発生する']
+  answer: [1]
+  verify: output
+  exp: |
+    `class << Speaker` は、クラス定義の中の `class << self` と同じく `Speaker` の特異クラスを開きます。その中の `self` は特異クラスなので、`@message` は特異クラスのインスタンス変数 `"Howdy!"` です。
+
+- cat: 文法
+  official: 28
+  topic: catchとthrow
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    def x
+      puts "x"
+    end
+
+    def y
+      puts "y"
+      throw :done
+    end
+
+    def z
+      puts "z"
+    end
+
+
+    __(1)__ do
+      x
+      y
+      z
+    end
+
+    puts "done!"
+  result: |-
+    x
+    y
+    done!
+  choices: ['try', 'catch', 'catch :done', 'rescue']
+  answer: [2]
+  verify: blank
+  exp: |
+    `throw :done` すると、同じタグ（`:done`）の `catch` ブロックまで一気に抜けて、`catch` の次から実行を続けます。メソッドの呼び出しをまたいでも抜けられます。
+
+    - 引数なしの `catch` は新しいタグ（`Object.new`）を作るので、`:done` とは一致しません。対応する `catch` がないので `UncaughtThrowError` になります。
+    - `try` というメソッドはなく、`rescue` は予約語なのでこの位置には書けません。
+
+    `catch` / `throw` は例外ではなく、深い入れ子から抜けるための制御構文です。
+
+- cat: 文法
+  official: 29
+  topic: throwの第2引数
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    letters = catch(:done) do
+      ("a".."z").each do |a|
+        ("a".."z").each do |b|
+          ("a".."z").each do |c|
+            if a < b && b < c
+              __(1)__
+            end
+          end
+        end
+      end
+    end
+
+    puts letters.join
+  result: 'abc'
+  choices: ['throw [a,b,c]', 'throw [a,b,c], :done', 'throw :done, [a,b,c]', 'raise :done, [a,b,c]']
+  answer: [2]
+  verify: blank
+  exp: |
+    `throw タグ, 値` の第2引数は、`catch` ブロックの値になります。最初に条件を満たす `["a", "b", "c"]` で `catch(:done)` を抜け、`letters` に入ります。
+
+    引数の順番は「タグが先、値が後」です。`throw [a,b,c]` は配列をタグにしてしまい、対応する `catch` がありません。`raise` にシンボルは渡せません（`TypeError`）。
+
+- cat: 文法
+  official: 30
+  topic: rescueの既定の対象
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(2つ選択)'
+  code: |
+    begin
+      __(1)__
+    rescue
+      puts "OK"
+    end
+  result: 'OK'
+  choices: ['raise StandardError', 'raise Exception', 'raise ArgumentError', 'raise ScriptError']
+  answer: [0, 2]
+  verify: blank
+  exp: |
+    クラスを指定しない `rescue` は `StandardError` とそのサブクラスだけを捕捉します。
+
+    ```
+    ArgumentError < StandardError < Exception
+    ScriptError < Exception
+    ```
+
+    `Exception` そのものや `ScriptError`（`LoadError`・`NotImplementedError`・`SyntaxError` の親）は `StandardError` の外にあるので捕捉されず、プログラムが止まります。
+
+- cat: 文法
+  official: 31
+  topic: rescue節の順番（1）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    AnError = Class.new(Exception)
+
+    begin
+      raise AnError
+    rescue
+      puts "Bare rescue"
+    rescue StandardError
+      puts "StandardError rescue"
+    rescue AnError
+      puts "AnError rescue"
+    rescue Exception
+      puts "Exception rescue"
+    end
+  choices: ['Bare rescue', 'StandardError rescue', 'AnError rescue', 'Exception rescue', "AnError rescue\nException rescue"]
+  answer: [2]
+  verify: output
+  exp: |
+    `rescue` 節は上から順に調べられ、**最初に一致した1つだけ**が実行されます。
+
+    `AnError` は `Exception` を直接継承しているので、クラス指定なしの `rescue`（＝ `StandardError`）と `rescue StandardError` には一致しません。3番目の `rescue AnError` で一致し、そこで終わります。
+
+- cat: 文法
+  official: 32
+  topic: rescue節の順番（2）
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    AnError = Class.new(Exception)
+
+    begin
+      raise AnError
+    rescue
+      puts "Bare rescue"
+    rescue StandardError
+      puts "StandardError rescue"
+    rescue Exception
+      puts "Exception rescue"
+    rescue AnError
+      puts "AnError rescue"
+    end
+  choices: ['Bare rescue', 'StandardError rescue', 'AnError rescue', 'Exception rescue', "Exception rescue\nAnError rescue"]
+  answer: [3]
+  verify: output
+  exp: |
+    `rescue Exception` は `AnError` を含むすべての例外に一致します。上から順に調べて最初に一致した節だけが実行されるので、その後ろの `rescue AnError` には届きません。
+
+    具体的な例外クラスほど上に書く、というのが `rescue` の書き方の基本です。
+
+- cat: 文法
+  official: 33
+  topic: NoMethodError
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    begin
+      "hello".world
+    rescue => ex
+      p ex.class
+    end
+  choices: ['StandardError', 'Exception', 'NameError', 'NoMethodError', 'ArgumentError']
+  answer: [3]
+  verify: output
+  exp: |
+    存在しないメソッドを呼ぶと `NoMethodError` が発生します。`rescue => ex` で例外オブジェクトが `ex` に入り、`ex.class` はその例外のクラスです。
+
+    `NoMethodError` は `NameError` のサブクラスです。未定義のローカル変数やメソッドを**レシーバなし**で参照したとき（`world` だけを書いたときなど）は `NameError` になります。
+
+- cat: 文法
+  official: 34
+  topic: 引数なしのraise
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    CustomError = Class.new(StandardError)
+
+    def boom
+      raise CustomError
+    rescue
+      raise
+    end
+
+    begin
+      boom
+    rescue => e
+      p e.class
+    end
+  choices: ['CustomError', 'StandardError', 'Exception', 'RuntimeError', 'SyntaxError']
+  answer: [0]
+  verify: output
+  exp: |
+    `rescue` 節の中で引数なしの `raise` を呼ぶと、いま捕捉している例外（`$!`）をそのまま投げ直します。外側に届くのは `CustomError` です。
+
+    例外を処理していないところで引数なしの `raise` を呼ぶと、`RuntimeError` が発生します。
+
+    メソッドの本体に直接 `rescue` を書けるのは、`def` が暗黙の `begin` の役割をするためです。
+
+- cat: 文法
+  official: 35
+  topic: ensureの値
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    def greeting
+      "hello"
+    ensure
+      puts "Ensure called!"
+
+      "hi"
+    end
+
+    puts greeting
+  choices: ['hello', 'hi', "Ensure called!\nhello", "Ensure called!\nhi"]
+  answer: [2]
+  verify: output
+  exp: |
+    `ensure` 節は必ず実行されますが、その値はメソッドの戻り値になりません。戻り値は本体の最後の値 `"hello"` です。
+
+    `greeting` の実行中（戻り値を返す前）に `ensure` が `Ensure called!` を出力し、そのあとで `puts` が `hello` を出力します。
+
+    なお `ensure` の中で明示的に `return` すると、その値が戻り値になり、発生中の例外も握りつぶされます。
+
+- cat: オブジェクト指向
+  official: 36
+  topic: selfの正体
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class Identity
+      def self.this_object
+        self
+      end
+
+      def this_object
+        self
+      end
+    end
+
+    a = Identity.this_object
+    b = Identity.this_object
+
+    c = Identity.new.this_object
+    d = Identity.new.this_object
+
+    p a == b
+    p c == d
+  choices: ["true\ntrue", "true\nfalse", "false\ntrue", "false\nfalse"]
+  answer: [1]
+  verify: output
+  exp: |
+    クラスメソッドの `self` はクラス `Identity` そのものなので、`a` と `b` は同じオブジェクトで `true` です。
+
+    インスタンスメソッドの `self` はそのインスタンスです。`Identity.new` を2回呼んで別々のインスタンスを作っているので、`c` と `d` は別のオブジェクトです。`==` を定義し直していなければ同一性で比べるので `false` になります。
+
+- cat: オブジェクト指向
+  official: 37
+  topic: クラスのクラス
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class Identity
+      def self.this_object
+        self.class
+      end
+
+      def this_object
+        self
+      end
+    end
+
+    p Identity.this_object.class
+    p Identity.new.this_object.class
+  choices: ["Identity\nIdentity", "Class\nIdentity", "Object\nIdentity", "Class\nObject"]
+  answer: [1]
+  verify: output
+  exp: |
+    - `Identity.this_object` は `Identity.class`、つまり `Class` を返します。その `.class` も `Class` です（`Class` 自身も `Class` のインスタンス）。
+    - `Identity.new.this_object` はインスタンスそのものなので、`.class` は `Identity` です。
+
+- cat: オブジェクト指向
+  official: 38
+  topic: モジュールの中のself
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    module Mixin
+      def this_object
+        self
+      end
+    end
+
+    class Identity
+      include Mixin
+    end
+
+
+    p Identity.new.this_object.class
+  choices: ['Mixin', 'Class', 'Object', 'Identity']
+  answer: [3]
+  verify: output
+  exp: |
+    `self` は「どこで定義されたか」ではなく「誰がメソッドを呼ばれたか（レシーバ）」です。
+
+    `this_object` は `Mixin` に書かれていますが、`Identity` のインスタンスに対して呼ばれているので、`self` はそのインスタンスで、`.class` は `Identity` です。
+
+- cat: オブジェクト指向
+  official: 39
+  topic: Classのスーパークラス
+  q: '`Class` の直接のスーパークラスを選択してください。(1つ選択)'
+  choices: ['`Object`', '`Module`', '`BasicObject`', '`Class`']
+  answer: [1]
+  verify: checks
+  checks:
+    - 'exit(Class.superclass == Object)'
+    - 'exit(Class.superclass == Module)'
+    - 'exit(Class.superclass == BasicObject)'
+    - 'exit(Class.superclass == Class)'
+  exp: |
+    継承関係は `Class < Module < Object < BasicObject` です。クラスはモジュールの機能（メソッドや定数を持つ、など）に加えて、インスタンスを作れる・継承できるという機能を持っています。
+
+    ただし、クラスを `include` や `extend` でミックスインすることはできません（`TypeError`）。
+
+- cat: オブジェクト指向
+  official: 40
+  topic: モジュールの特異メソッド
+  q: 以下のコードについて、正しい記述を選択してください。(1つ選択)
+  code: |
+    module Mixin
+      def self.greet
+        puts "Hello World!"
+      end
+    end
+
+    class SomeClass
+      include Mixin
+    end
+  choices:
+    - '`Mixin.greet` は `Hello World!` を出力し、`SomeClass.greet` は例外を発生する。'
+    - '`Mixin.greet` は例外を発生し、`SomeClass.greet` は `Hello World!` を出力する。'
+    - '`Mixin.greet` も `SomeClass.greet` も `Hello World!` を出力する。'
+    - '`Mixin.greet` も `SomeClass.greet` も例外を発生する。'
+  answer: [0]
+  verify: checks
+  checks:
+    - "Mixin.greet\nbegin; SomeClass.greet; exit(false); rescue NoMethodError; exit(true); end"
+    - "begin; Mixin.greet; exit(false); rescue NoMethodError; end\nSomeClass.greet"
+    - "Mixin.greet\nSomeClass.greet"
+    - "begin; Mixin.greet; exit(false); rescue NoMethodError; end\nbegin; SomeClass.greet; exit(false); rescue NoMethodError; exit(true); end"
+  exp: |
+    `def self.greet` はモジュール `Mixin` 自身の特異メソッドです。`Mixin.greet` とは呼べますが、`include` してもクラスには引き継がれません（`include` で取り込まれるのはインスタンスメソッドだけです）。そのため `SomeClass.greet` は `NoMethodError` です。
+
+    モジュール関数として呼べて、`include` もできるメソッドを作るには `module_function` を使います。
+
+    **公式版からの修正**: 選択肢 D の「`Hello World!`を例外を発生する」は「例外を発生する」の誤記なので直しました。
+
+- cat: オブジェクト指向
+  official: 41
+  topic: extend
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    module Mixin
+      def greet
+        puts "Hello World!"
+      end
+    end
+
+    class SomeClass
+      extend Mixin
+    end
+
+    __(1)__
+  result: 'Hello World!'
+  choices: ['Mixin.greet', 'SomeClass.new.greet', 'SomeClass.greet', 'Mixin.new.greet']
+  answer: [2]
+  verify: blank
+  exp: |
+    `extend` はモジュールのインスタンスメソッドを、レシーバ（ここではクラス `SomeClass` そのもの）の**特異メソッド**として取り込みます。そのため `SomeClass.greet` とクラスメソッドのように呼べます。
+
+    インスタンスからは呼べず、モジュールは `new` できません。`extend` はクラス以外の任意のオブジェクトにも使えます（`obj.extend(Mixin)`）。
+
+- cat: オブジェクト指向
+  official: 42
+  topic: include
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    module Mixin
+      def greet
+        puts "Hello World!"
+      end
+    end
+
+    class SomeClass
+      include Mixin
+    end
+
+    __(1)__
+  result: 'Hello World!'
+  choices: ['Mixin.greet', 'SomeClass.new.greet', 'SomeClass.greet', 'Mixin.new.greet']
+  answer: [1]
+  verify: blank
+  exp: |
+    `include` したモジュールのメソッドは、そのクラスの**インスタンスメソッド**になります。`SomeClass.new.greet` で呼べます。
+
+    前の問題の `extend` との違いを押さえましょう（`include` → インスタンスメソッド、`extend` → 特異メソッド）。
+
+- cat: オブジェクト指向
+  official: 43
+  topic: 可視性の変更
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る記述として**不適切なもの**を選択してください。(1つ選択)'
+  code: |
+    class BaseClass
+      private
+
+      def greet
+        puts "Hello World!"
+      end
+    end
+
+    class ChildClass < BaseClass
+      __(1)__
+    end
+
+
+    ChildClass.new.greet
+  result: 'Hello World!'
+  choices:
+    - 'public :greet'
+    - 'protected :greet'
+    - |-
+      def greet
+        super
+      end
+    - |-
+      alias_method :original_greet, :greet
+
+      def greet
+        original_greet
+      end
+  answer: [1]
+  verify: blank
+  negate: true
+  exp: |
+    サブクラスでは、継承した private メソッドを public にし直したり、public なメソッドで包んだりできます。
+
+    - `public :greet` … `ChildClass` では `greet` が public になります。
+    - `def greet; super; end` … `def` は（`private` の指定がなければ）public なメソッドを定義し、中の `super` はレシーバなしの呼び出しなので private なメソッドも呼べます。
+    - `alias_method` … 別名 `original_greet` は private のままですが、新しく定義した public な `greet` からレシーバなしで呼べます。
+    - `protected :greet` … protected メソッドは、同じクラス（またはサブクラス）のインスタンスメソッドの中からしか呼べません。トップレベルから `ChildClass.new.greet` と呼ぶと `NoMethodError` です。
+
+- cat: 文法
+  official: 44
+  topic: パターンマッチ（case/in）
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    h = [1, 2, 3]
+    case h
+    __(1)__ [x, y]
+      p [:two, x, y]
+    __(1)__  [x, y, z]
+      p [:three, x, y, z]
+    end
+  result: '[:three, 1, 2, 3]'
+  choices: ['when', 'in', 'if', '=>']
+  answer: [1]
+  verify: blank
+  exp: |
+    パターンマッチは `case` 式で `when` の代わりに `in` を使います。`in [x, y]` は「要素がちょうど2つの配列」に一致し、要素を変数 `x`, `y` に取り出します。
+
+    `[1, 2, 3]` は要素が3つなので最初の `in` には一致せず、2つ目の `in [x, y, z]` で一致します。
+
+    `when [x, y]` だと、`x` と `y` は未定義の変数を参照しようとして `NameError` になります。
+
+- cat: 組み込みライブラリ
+  official: 45
+  topic: Enumerableとeach
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    class Alphabet
+      include Enumerable
+
+      def initialize
+        @letters = ("A".."Z").to_a
+      end
+
+      def __(1)__
+        @letters.each do |e|
+          yield e
+        end
+      end
+    end
+
+    set = Alphabet.new
+
+    p set.take(5)
+    p set.select { |e| e > "W" }
+  result: |-
+    ["A", "B", "C", "D", "E"]
+    ["X", "Y", "Z"]
+  choices: ['all', 'each', 'to_a', 'to_ary', 'to_enum']
+  answer: [1]
+  verify: blank
+  exp: |
+    `Enumerable` を `include` したクラスは、`each` を定義するだけで `map`・`select`・`take`・`sort`・`include?` などの多くのメソッドが使えるようになります。`Enumerable` のメソッドはすべて `each` を使って作られているためです。
+
+    ほかの名前で定義しても `Enumerable` からは使われず、`take` を呼んだところで `NoMethodError`（`each` がない）になります。
+
+- cat: 組み込みライブラリ
+  official: 46
+  topic: Comparableと<=>
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    class TShirt
+      SIZES = [:xs, :s, :m, :l, :xl, :xxl]
+
+      include Comparable
+
+      def initialize(size)
+        @size = size
+      end
+
+      attr_reader :size
+
+      def <=>(other)
+        SIZES.index(size) <=> SIZES.index(other.size)
+      end
+    end
+
+    medium = TShirt.new(:m)
+    large  = TShirt.new(:l)
+
+    p medium == large
+    p medium <  large
+    p medium <= large
+    p medium >  large
+    p medium >= large
+  choices:
+    - "true\nfalse\ntrue\nfalse\ntrue"
+    - "false\ntrue\ntrue\nfalse\nfalse"
+    - "false\nfalse\nfalse\ntrue\ntrue"
+    - "false\nfalse\nfalse\nfalse\nfalse"
+    - '!例外が発生する'
+  answer: [1]
+  verify: output
+  exp: |
+    `Comparable` を `include` して `<=>` を定義すると、`==`・`<`・`<=`・`>`・`>=`・`between?`・`clamp` が使えるようになります。
+
+    `<=>` は「左が小さければ負、等しければ 0、大きければ正」を返すメソッドです。`:m` の位置は 2、`:l` は 3 なので `medium <=> large` は `-1` で、medium のほうが小さいことになります。
+
+- cat: 標準添付ライブラリ
+  official: 47
+  topic: Date#<< と Date#>>
+  q: 以下のコードを実行した結果として正しいものを選択してください。(1つ選択)
+  code: |
+    require "date"
+
+    date = Date.new(2000, 2, 24)
+
+    puts(date << 12)
+    puts(date >> 12)
+  choices: ["2000-02-12\n2000-03-07", "2000-03-07\n2000-02-12", "1999-02-24\n2001-02-24", "1988-02-24\n2012-02-24"]
+  answer: [2]
+  verify: output
+  exp: |
+    `Date#<<` は n か月**前**、`Date#>>` は n か月**後**の日付を返します。12か月なので、ちょうど1年前と1年後です。
+
+    移動した先の月にその日がない場合は、その月の末日になります（例: `Date.new(2001, 3, 31) << 1` は `2001-02-28`）。日単位で動かすときは `date - 12` や `date + 12` を使います。
+
+- cat: 標準添付ライブラリ
+  official: 48
+  topic: Time.strptime
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。なお、タイムゾーンは日本時間（JST）とします。(1つ選択)'
+  code: |
+    require "time"
+
+    t = Time.__(1)__("00000024021993", "%S%M%H%d%m%Y")
+    puts t.iso8601
+  result: '1993-02-24T00:00:00+09:00'
+  choices: ['format', 'parse', 'strftime', 'strptime']
+  answer: [3]
+  verify: blank
+  env: {TZ: Asia/Tokyo}
+  exp: |
+    `Time.strptime(文字列, フォーマット)` は、フォーマットどおりに文字列を解析して `Time` を作ります（`require "time"` が必要です）。
+
+    - `Time.parse` は書式を推測して解析するメソッドで、フォーマットは受け取りません。
+    - `strftime` は逆に `Time` を文字列にする**インスタンス**メソッドです。
+    - `Time.format` というメソッドはありません。
+
+    「**p**arse」の p、「**f**ormat」の f と覚えると区別しやすいです。
+
+    **公式版からの修正**: 実行結果の `+09:00` は実行環境のタイムゾーンによって変わるので、「タイムゾーンは日本時間（JST）とします」と書き添えました。
+
+- cat: 標準添付ライブラリ
+  official: 49
+  topic: Singleton
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    require "singleton"
+
+    class Foo
+      __(1)__
+    end
+
+    x = Foo.instance
+    y = Foo.instance
+    p x.equal?(y)
+  result: 'true'
+  choices: ['include Singleton', 'extend Singleton', 'using Singleton', 'singletonize']
+  answer: [0]
+  verify: blank
+  exp: |
+    `Singleton` モジュールを `include` すると、クラスにただ1つのインスタンスを返す `instance` メソッドが追加され、`new` は private になります（`Foo.new` は `NoMethodError`）。
+
+    `equal?` は同じオブジェクトかどうかを調べるので、何度 `instance` を呼んでも `true` です。
+
+- cat: 標準添付ライブラリ
+  official: 50
+  topic: Forwardable
+  q: '以下の実行結果を出力するコードがあります。__(1)__ に入る適切な記述を選択してください。(1つ選択)'
+  code: |
+    require 'forwardable'
+
+    class List
+      extend Forwardable
+
+      def initialize
+        @contents = []
+      end
+
+      __(1)__ :@contents, :push
+      __(1)__ :@contents, :[]
+    end
+
+    list = List.new
+    list.push("a")
+    list.push("b")
+    list.push("c")
+    p list[1]
+  result: '"b"'
+  choices: ['forward', 'def_forwarder', 'def_delegator', 'define']
+  answer: [2]
+  verify: blank
+  exp: |
+    `Forwardable` を `extend` すると、`def_delegator 委譲先, メソッド名` でメソッドの呼び出しを別のオブジェクトに転送（委譲）できます。
+
+    複数のメソッドをまとめて委譲するには `def_delegators :@contents, :push, :[]` と書きます。`Forwardable` は `include` ではなく `extend` する点にも注意しましょう。
