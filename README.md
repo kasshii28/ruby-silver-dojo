@@ -11,6 +11,7 @@
 修正点は [docs/official-prep-test.md](docs/official-prep-test.md)（Silver）と [docs/official-prep-test-gold.md](docs/official-prep-test-gold.md)（Gold）にまとめています。
 
 - 出題順・選択肢の並びは毎回ランダム、受験履歴と復習はブラウザの localStorage に試験ごとに保存（Silver は `rs-*`、Gold は `rg-*`）
+- 公開URL: https://shikakudojo.vercel.app （以前の https://ruby-silver-dojo.vercel.app も同じサイトを表示）
 - 以前の URL（`/#quiz` や `/#r…`）で開くと、Ruby Silver のページに移ります
 
 ## 構成（Astro + TypeScript）
