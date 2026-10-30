@@ -1,27 +1,24 @@
 // Reads the question YAML at build time, validates it, and returns the list sent to the browser.
 // Any problem fails the build.
 import { parse } from 'yaml';
-import { CATEGORIES, type Category, type Question } from './types';
+import type { Exam } from './exams';
+import type { Category, Question } from './types';
 
-// Ids are assigned in this order and saved in users' study history, so never reorder these files.
-const FILES = ['q_syntax', 'q_lib', 'q_oop', 'q_syntax2', 'q_lib2', 'q_oop2', 'q_extra', 'q_official'];
-
-const sources = import.meta.glob<string>('../data/questions/*.yml', { query: '?raw', import: 'default', eager: true });
+const sources = import.meta.glob<string>('../data/*/*.yml', { query: '?raw', import: 'default', eager: true });
 
 type Raw = Record<string, unknown>;
 
 const isRaw = (v: unknown): v is Raw => typeof v === 'object' && v !== null && !Array.isArray(v);
-const isCategory = (v: unknown): v is Category => CATEGORIES.some((c) => c === v);
 const optString = (v: unknown): string | undefined => (v === null || v === undefined ? undefined : String(v));
 
-function toQuestion(item: unknown, id: number, errors: string[]): Question | null {
+function toQuestion(item: unknown, id: number, cats: readonly Category[], errors: string[]): Question | null {
   const fail = (msg: string) => {
     errors.push(`No.${id}: ${msg}`);
     return null;
   };
   if (!isRaw(item)) return fail('not a mapping');
   const { cat, topic, q, code, result, choices, answer, cm, exp, verify, official } = item;
-  if (!isCategory(cat)) return fail(`unknown cat ${JSON.stringify(cat)}`);
+  if (!cats.some((c) => c === cat)) return fail(`unknown cat ${JSON.stringify(cat)}`);
   if (typeof topic !== 'string' || !topic) return fail('topic is missing');
   if (typeof q !== 'string' || !q) return fail('q is missing');
   if (typeof exp !== 'string' || !exp) return fail('exp is missing');
@@ -38,7 +35,7 @@ function toQuestion(item: unknown, id: number, errors: string[]): Question | nul
   if (no !== undefined && !(Number.isInteger(no) && no > 0)) return fail('official must be a positive integer');
   return {
     id,
-    cat,
+    cat: cat as Category,
     topic,
     q,
     code: optString(code),
@@ -51,26 +48,27 @@ function toQuestion(item: unknown, id: number, errors: string[]): Question | nul
   };
 }
 
-export function loadQuestions(): Question[] {
+export function loadQuestions(exam: Exam): Question[] {
   const errors: string[] = [];
-  const byName = new Map(Object.entries(sources).map(([path, src]) => [path.replace(/^.*\/([^/]+)\.yml$/, '$1'), src]));
+  const dir = `../data/${exam.slug}/`;
+  const byName = new Map(Object.entries(sources).filter(([path]) => path.startsWith(dir)).map(([path, src]) => [path.slice(dir.length, -'.yml'.length), src]));
   for (const name of byName.keys()) {
-    if (!FILES.includes(name)) errors.push(`${name}.yml is not listed in FILES (src/lib/questions.ts)`);
+    if (!exam.files.includes(name)) errors.push(`${exam.slug}/${name}.yml is not listed in files (src/lib/exams.ts)`);
   }
-  const items = FILES.flatMap((name) => {
+  const items = exam.files.flatMap((name) => {
     const src = byName.get(name);
     if (src === undefined) {
-      errors.push(`${name}.yml is missing`);
+      errors.push(`${exam.slug}/${name}.yml is missing`);
       return [];
     }
     const doc: unknown = parse(src);
     if (!Array.isArray(doc)) {
-      errors.push(`${name}.yml is not a list`);
+      errors.push(`${exam.slug}/${name}.yml is not a list`);
       return [];
     }
     return doc as unknown[];
   });
-  const questions = items.map((item, i) => toQuestion(item, i + 1, errors));
-  if (errors.length) throw new Error(`Invalid question data:\n${errors.join('\n')}`);
+  const questions = items.map((item, i) => toQuestion(item, i + 1, exam.cats, errors));
+  if (errors.length) throw new Error(`Invalid question data (${exam.slug}):\n${errors.join('\n')}`);
   return questions.filter((q): q is Question => q !== null);
 }

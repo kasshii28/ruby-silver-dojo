@@ -1,11 +1,11 @@
-// Study history in localStorage. The keys and shapes are the same as the original site's,
+// Study history in localStorage, kept per exam. Ruby Silver uses the original site's keys (rs-*) and shapes,
 // so existing users keep their history. Anything malformed is dropped on load.
 import type { Answer, ExamRecord, QuestionStat, Session } from '../lib/types';
-import { byId } from './data';
+import { EXAM, byId } from './data';
 
-const KEY_HIST = 'rs-hist';
-const KEY_CURRENT = 'rs-current';
-const KEY_HISTORY = 'rs-history';
+const KEY_HIST = `${EXAM.storage}-hist`;
+const KEY_CURRENT = `${EXAM.storage}-current`;
+const KEY_HISTORY = `${EXAM.storage}-history`;
 export const MAX_RECORDS = 100;
 
 function read(k: string): unknown {

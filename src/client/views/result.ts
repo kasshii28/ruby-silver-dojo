@@ -15,7 +15,7 @@ export function renderResult(r: ExamRecord, filter: 'all' | 'ng' = 'all'): void 
   }).join('');
   let html = `<div class="quizbar"><button class="btn ghost" type="button" id="to-home">← ホーム</button></div>
     <section class="sheet summary"><h2>${esc(r.title)}の結果</h2><p class="when">${fmtDate(r.finishedAt)}</p>
-    <div class="score"><span class="big">${s.pct}%</span><span class="of">${s.total} 問中 ${s.ok} 問正解${s.answered < s.total ? `（未回答 ${s.total - s.answered} 問）` : ''}・${pass ? '合格ライン（75%）に届いています' : `合格ライン（75%）まであと ${Math.max(0, Math.ceil((s.total * PASS) / 100) - s.ok)} 問`}</span></div>
+    <div class="score"><span class="big">${s.pct}%</span><span class="of">${s.total} 問中 ${s.ok} 問正解${s.answered < s.total ? `（未回答 ${s.total - s.answered} 問）` : ''}・${pass ? `合格ライン（${PASS}%）に届いています` : `合格ライン（${PASS}%）まであと ${Math.max(0, Math.ceil((s.total * PASS) / 100) - s.ok)} 問`}</span></div>
     <div><div class="gauge"><i class="${pass ? 'pass' : ''}" data-w="${s.pct}"></i><span class="line"></span></div><div class="gauge-labels"><span>合格ライン 75%</span></div></div>
     <div class="bycat">${cats}</div>
     <div class="actions">${wrong.length ? `<button class="btn primary" type="button" id="retry-ng">まちがえた ${wrong.length} 問を解き直す</button>` : ''}

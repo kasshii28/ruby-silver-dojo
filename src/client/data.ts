@@ -1,21 +1,22 @@
-// The questions embedded in the page as JSON (see src/pages/index.astro).
-import { CATEGORIES, type Question } from '../lib/types';
+// The exam and its questions, embedded in the page as JSON (see src/pages/[exam].astro).
+import type { ExamInfo } from '../lib/exams';
+import type { Question } from '../lib/types';
 
-function load(): Question[] {
-  const text = document.getElementById('qdata')?.textContent;
-  const list = text ? (JSON.parse(text) as Question[]) : [];
-  return list.slice().sort((a, b) => a.id - b.id);
+function readJson(id: string): unknown {
+  const text = document.getElementById(id)?.textContent;
+  return text ? JSON.parse(text) : undefined;
 }
 
-export const QUESTIONS = load();
+export const EXAM = readJson('exam') as ExamInfo;
+export const QUESTIONS = ((readJson('qdata') ?? []) as Question[]).slice().sort((a, b) => a.id - b.id);
 /** This site's own questions. The random exams draw only from these. */
 export const ORIGINAL = QUESTIONS.filter((q) => q.official === undefined);
 /** The official prep test, in its own numbering. */
 export const OFFICIAL = QUESTIONS.filter((q) => q.official !== undefined).sort((a, b) => (a.official ?? 0) - (b.official ?? 0));
-export const OFFICIAL_SOURCE = 'https://github.com/ruby-association/prep-test/blob/version3/silver_ja.md';
-export const CATS = CATEGORIES;
+export const OFFICIAL_SOURCE = EXAM.officialSource;
+export const CATS = EXAM.cats;
 export const KEYS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
-export const PASS = 75;
+export const PASS = EXAM.pass;
 
 export const byId = new Map(QUESTIONS.map((q) => [q.id, q]));
 

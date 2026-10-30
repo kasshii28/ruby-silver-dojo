@@ -1,6 +1,7 @@
 // Shared by the build (src/lib/questions.ts) and the browser (src/client).
 
-export const CATEGORIES = ['文法', '組み込みライブラリ', 'オブジェクト指向'] as const;
+/** Every category used by any exam. Each exam lists its own in src/lib/exams.ts. */
+export const CATEGORIES = ['文法', '組み込みライブラリ', 'オブジェクト指向', '標準添付ライブラリ', '実行環境'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 /** One question as sent to the browser. `id` follows the YAML order and must never change. */
@@ -20,7 +21,7 @@ export interface Question {
   /** Show choices as monospaced code. */
   cm: boolean;
   exp: string;
-  /** The question number in the official prep test (q_official.yml). Unset for this site's own questions. */
+  /** The question number in the official prep test (*_official.yml). Unset for this site's own questions. */
   official?: number;
 }
 
@@ -30,14 +31,14 @@ export interface Answer {
   ok: boolean;
 }
 
-/** localStorage `rs-hist`: the latest result per question, the number of tries and of correct tries. */
+/** localStorage `<prefix>-hist`: the latest result per question, the number of tries and of correct tries. */
 export interface QuestionStat {
   ok: boolean;
   n: number;
   c: number;
 }
 
-/** localStorage `rs-current`: the exam in progress. `perm[id]` maps display position → original choice index. */
+/** localStorage `<prefix>-current`: the exam in progress. `perm[id]` maps display position → original choice index. */
 export interface Session {
   title: string;
   ids: number[];
@@ -47,7 +48,7 @@ export interface Session {
   startedAt: number;
 }
 
-/** An entry of localStorage `rs-history` (newest first). */
+/** An entry of localStorage `<prefix>-history` (newest first). */
 export interface ExamRecord {
   id: number;
   title: string;

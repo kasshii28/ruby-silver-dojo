@@ -1,6 +1,6 @@
-# 公式模擬問題の取り込みと修正点
+# Ruby Silver 公式模擬問題の取り込みと修正点
 
-`src/data/questions/q_official.yml` は、Ruby Association が公開している Silver version 3 のサンプル問題をもとにしています。
+`src/data/ruby-silver/q_official.yml` は、Ruby Association が公開している Silver version 3 のサンプル問題をもとにしています。
 
 - 出典: <https://github.com/ruby-association/prep-test/blob/version3/silver_ja.md>（解答: `silver_answers_ja.md`）
 - 取り込んだ版: `version3` ブランチ commit `bcbfe4425a7d575e8afb62458e5b98f7592663c9`

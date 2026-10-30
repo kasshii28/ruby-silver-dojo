@@ -1,0 +1,642 @@
+# オブジェクト指向
+- cat: オブジェクト指向
+  topic: メソッド探索とprepend
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Loud
+      def hello = super.upcase
+    end
+    module Polite
+      def hello = "please, " + super
+    end
+    class Person
+      prepend Loud
+      include Polite
+      def hello = "hi"
+    end
+    class Base
+      def hello = "base"
+    end
+    p Person.new.hello
+  choices: ['"HI"', '"PLEASE, HI"', '"please, HI"', '"PLEASE, BASE"']
+  answer: [0]
+  verify: output
+  exp: |
+    `Person.ancestors` は `[Loud, Person, Polite, Object, ...]` です。
+
+    1. `Loud#hello` が最初に見つかり、`super` で次の `Person#hello` を呼びます。
+    2. `Person#hello` は `super` を呼ばずに `"hi"` を返すので、`Polite#hello` は呼ばれません。
+    3. `Loud#hello` がそれを大文字にして `"HI"` です。
+
+    `Base` は `Person` と継承関係がないので無関係です。
+
+- cat: オブジェクト指向
+  topic: 同じモジュールを2回include
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module M; end
+    module N; end
+    class C
+      include M
+      include N
+      include M
+    end
+    p C.ancestors.take(3)
+  choices: ['[C, N, M]', '[C, M, N]', '[C, M, N, M]', '[M, N, C]']
+  answer: [0]
+  verify: output
+  exp: |
+    `include` したモジュールは、クラスの**すぐ後ろ**に入ります。あとから `include` したものほどクラスに近い位置（先に探される）になるので、`M`、`N` の順に `include` すると `[C, N, M]` です。
+
+    すでに継承チェーンにあるモジュールをもう一度 `include` しても何も起きません（位置も変わりません）。
+
+- cat: オブジェクト指向
+  topic: superの引数
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      def greet(name = "nobody", *rest)
+        "#{name} #{rest.size}"
+      end
+    end
+    class Child < Parent
+      def greet(name, *rest)
+        name = "changed"
+        [super, super(), super(name)]
+      end
+    end
+    p Child.new.greet("Bob", 1, 2)
+  choices: ['["changed 2", "nobody 0", "changed 0"]', '["Bob 2", "nobody 0", "changed 0"]', '["changed 2", "changed 2", "changed 0"]', '["Bob 2", "Bob 2", "changed 2"]']
+  answer: [0]
+  verify: output
+  exp: |
+    - `super`（かっこも引数もなし）… いまのメソッドの仮引数を、**その時点の値で**そのまま渡します。`name` は書き換えたあとの `"changed"`、`rest` は `[1, 2]` です。
+    - `super()` … 引数を1つも渡しません。親の既定値 `"nobody"` が使われます。
+    - `super(name)` … 書いた引数だけを渡します。
+
+- cat: オブジェクト指向
+  topic: method_missing と respond_to_missing?
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Ghost
+      def method_missing(name, *args)
+        if name.to_s.start_with?("get_")
+          name.to_s.delete_prefix("get_")
+        else
+          super
+        end
+      end
+      def respond_to_missing?(name, include_private = false)
+        name.to_s.start_with?("get_") || super
+      end
+    end
+    g = Ghost.new
+    p g.get_name
+    p g.respond_to?(:get_age)
+    p g.method(:get_x).call
+    g.other
+  choices:
+    - '`"name"`、`true`、`"x"` が出力された後、`NoMethodError` が発生する'
+    - '`"name"`、`false` が出力された後、`NameError` が発生する'
+    - '`"name"`、`true`、`"x"` が出力され、エラーは発生しない'
+    - '`"name"` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"name\"\ntrue\n\"x\"", error: NoMethodError}
+  exp: |
+    メソッドが見つからないと `method_missing` が呼ばれます。対象外の名前は `super` で `BasicObject#method_missing` に任せると、通常どおり `NoMethodError` になります。
+
+    `respond_to_missing?` を定義しておくと、`respond_to?` が `true` を返すようになり、`method(:get_x)` で `Method` オブジェクトも取り出せます。`method_missing` を使うときはセットで定義するのが作法です。
+
+- cat: オブジェクト指向
+  topic: instance_variable_get / set
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Box
+      def initialize
+        @a = 1
+      end
+    end
+    b = Box.new
+    b.instance_variable_set(:@b, 2)
+    p b.instance_variables
+    p b.instance_variable_get(:@c)
+    p Box.new.instance_variables
+  choices: ["[:@a, :@b]\nnil\n[:@a]", "[:@a, :@b]\nnil\n[:@a, :@b]", "[:@a]\nnil\n[:@a]", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    インスタンス変数はクラスではなく**個々のオブジェクト**が持つものです。`instance_variable_set` で外から追加した `@b` は、そのオブジェクト `b` だけにあります。
+
+    まだ代入されていないインスタンス変数を読むと、例外ではなく `nil` になります。名前は `:@b` のように `@` 付きで指定します（`@` がないと `NameError`）。
+
+- cat: オブジェクト指向
+  topic: instance_eval と class_eval
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Foo; end
+    Foo.class_eval do
+      def a = "a"
+    end
+    Foo.instance_eval do
+      def b = "b"
+    end
+    p Foo.new.a
+    p Foo.b
+    p Foo.new.respond_to?(:b)
+  choices: ["\"a\"\n\"b\"\nfalse", "\"a\"\n\"b\"\ntrue", '!`NoMethodError` が発生する', "\"a\"\nnil\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `class_eval`（`module_eval`）の中の `def` は、そのクラスの**インスタンスメソッド**を定義します。`class Foo ... end` の中に書くのと同じです。
+    - `instance_eval` の中の `def` は、レシーバ（ここではクラス `Foo` というオブジェクト）の**特異メソッド**を定義します。`Foo.b` とクラスメソッドのように呼べますが、インスタンスにはありません。
+
+- cat: オブジェクト指向
+  topic: instance_exec
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Counter
+      def initialize = @n = 10
+    end
+    add = proc { |x| @n + x }
+    c = Counter.new
+    p c.instance_exec(5, &add)
+    p c.instance_eval { @n * 2 }
+  choices: ["15\n20", "5\n20", '!`NoMethodError` が発生する', '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `instance_eval` と `instance_exec` は、ブロックの中の `self` をレシーバに切り替えて実行します。そのため、外からは見えないインスタンス変数 `@n` を読めます。
+
+    違いは引数で、`instance_exec` はブロックに引数を渡せます（`instance_eval` のブロックには `self` が渡されるだけです）。`class_eval` に対する `class_exec` も同じ関係です。
+
+- cat: オブジェクト指向
+  topic: Class.new と名前
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    klass = Class.new(StandardError) do
+      def message = "custom"
+    end
+    p klass.name
+    MyError = klass
+    p klass.name
+    p klass.superclass
+    p MyError.new.message
+  choices: ["nil\n\"MyError\"\nStandardError\n\"custom\"", "\"klass\"\n\"MyError\"\nStandardError\n\"custom\"", "nil\nnil\nObject\n\"custom\"", "nil\n\"MyError\"\nStandardError\n\"MyError\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `Class.new(スーパークラス) { ... }` で、名前のないクラス（無名クラス）を作れます。ブロックの中はクラス定義の本体と同じで、`def` でメソッドを定義できます。
+
+    無名クラスの `name` は `nil` ですが、**定数に代入した時点で**その定数名がクラス名になります。ローカル変数に入れただけでは名前は付きません。
+
+- cat: オブジェクト指向
+  topic: define_method とクロージャ
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Config
+      %w[host port].each_with_index do |key, i|
+        define_method(key) { "#{key}=#{i}" }
+        define_method("#{key}?") { true }
+      end
+    end
+    c = Config.new
+    p c.host, c.port?, c.respond_to?(:port)
+  choices: ["\"host=0\"\ntrue\ntrue", "\"host=1\"\ntrue\ntrue", "\"host=0\"\ntrue\nfalse", '!`ArgumentError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `define_method(名前) { ... }` は、ブロックをメソッドの本体にしてインスタンスメソッドを定義します。名前は文字列でもシンボルでもかまいません。
+
+    ブロックはクロージャなので、定義したときのブロック変数 `key` と `i` を覚えています。`def` と違い、外側のローカル変数を本体から参照できるのが `define_method` の特徴です。
+
+- cat: オブジェクト指向
+  topic: send と public_send
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Safe
+      private
+      def secret = "s3cret"
+    end
+    s = Safe.new
+    p s.send(:secret)
+    p s.__send__(:secret)
+    p s.public_send(:secret)
+  choices:
+    - '`"s3cret"` が2回出力された後、`NoMethodError` が発生する'
+    - '`"s3cret"` が3回出力される'
+    - '1つ目の `send` で `NoMethodError` が発生する'
+    - '`"s3cret"` が1回出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"s3cret\"\n\"s3cret\"", error: NoMethodError}
+  exp: |
+    `send` と `__send__` は、メソッド名を指定して呼び出します。**private メソッドも呼べてしまいます**。
+
+    `public_send` は public メソッドしか呼ばないので、private な `secret` は `NoMethodError` です。
+
+    `send` という名前は自作のクラスで上書きされることがあるため、確実に呼びたいときは `__send__` を使います。
+
+- cat: オブジェクト指向
+  topic: protected
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Account
+      def initialize(b) = @balance = b
+      def richer_than?(other) = balance > other.balance
+      protected
+      def balance = @balance
+    end
+    a = Account.new(100)
+    b = Account.new(50)
+    p a.richer_than?(b)
+    p a.balance
+  choices:
+    - '`true` が出力された後、`NoMethodError` が発生する'
+    - '`true` と `100` が出力される'
+    - '`richer_than?` の中で `NoMethodError` が発生する'
+    - '`false` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "true", error: NoMethodError}
+  exp: |
+    protected メソッドは、同じクラス（またはサブクラス）のインスタンスメソッドの中であれば、**ほかのインスタンスをレシーバにして**呼べます。`other.balance` はこれに当たります。
+
+    クラスの外から `a.balance` と呼ぶことはできません。private との違いは「同じクラスの別のオブジェクトの値を見られるかどうか」で、比較メソッドの実装によく使われます。
+
+- cat: オブジェクト指向
+  topic: private_class_method
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Point
+      private_class_method :new
+      def self.origin = new
+      def to_s = "(0, 0)"
+    end
+    puts Point.origin
+    puts Point.new
+  choices:
+    - '`(0, 0)` が出力された後、`NoMethodError` が発生する'
+    - '`(0, 0)` が2回出力される'
+    - '`Point.origin` で `NoMethodError` が発生する'
+    - '!文法エラーが発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "(0, 0)", error: NoMethodError}
+  exp: |
+    `private_class_method :new` でクラスメソッド `new` を private にすると、クラスの外から `Point.new` と呼べなくなります。
+
+    クラスメソッドの中ではレシーバなしで `new` を呼べるので、`Point.origin` のような専用の生成メソッドからは作れます。`Singleton` モジュールもこの仕組みを使っています。
+
+    クラスの中で `private` と書いても、その後の `def self.xxx` は private になりません。クラスメソッドを private にするにはこのメソッドを使います。
+
+- cat: オブジェクト指向
+  topic: module_function
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Util
+      module_function
+      def twice(x) = x * 2
+    end
+    class Calc
+      include Util
+      def run = twice(5)
+    end
+    p Util.twice(3)
+    p Calc.new.run
+    p Calc.new.twice(1)
+  choices:
+    - '`6` と `10` が出力された後、`NoMethodError` が発生する'
+    - '`6`、`10`、`2` が出力される'
+    - '`Util.twice(3)` で `NoMethodError` が発生する'
+    - '`6` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "6\n10", error: NoMethodError}
+  exp: |
+    `module_function` の後に定義したメソッドは、次の2つが同時に作られます。
+
+    - モジュールの特異メソッド（`Util.twice` と呼べる）
+    - **private** なインスタンスメソッドのコピー
+
+    `include` したクラスの中ではレシーバなしで呼べますが、private なので `Calc.new.twice` とは呼べません。`Math.sqrt` などの `Math` モジュールのメソッドがこの形です。
+
+- cat: オブジェクト指向
+  topic: extend self
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Greeting
+      extend self
+      def hello = "hello from #{self}"
+    end
+    class Person
+      include Greeting
+      def to_s = "person"
+    end
+    p Greeting.hello
+    p Person.new.hello
+  choices: ["\"hello from Greeting\"\n\"hello from person\"", "\"hello from Greeting\"\n\"hello from Greeting\"", '!`NoMethodError` が発生する', "\"hello from person\"\n\"hello from person\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `extend self` は、モジュール自身に自分のインスタンスメソッドを `extend` します。これでモジュールのメソッドを `Greeting.hello` と呼べるようになり、`include` したクラスでは **public** なインスタンスメソッドとして使えます（`module_function` では private になる点が違います）。
+
+    `self` は呼ばれたレシーバなので、`Greeting.hello` ではモジュール自身、`Person.new.hello` ではそのインスタンスです。
+
+- cat: オブジェクト指向
+  topic: included と inherited
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Trackable
+      def self.included(base)
+        base.extend(ClassMethods)
+      end
+      module ClassMethods
+        def tracked? = true
+      end
+    end
+    class Base
+      def self.inherited(sub)
+        super
+        puts "#{sub} < #{self}"
+      end
+    end
+    class Item < Base
+      include Trackable
+    end
+    p Item.tracked?
+  choices: ["Item < Base\ntrue", "true", "Base < Item\ntrue", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    フックメソッドは、特定のタイミングで Ruby から自動的に呼ばれます。
+
+    - `Module.included(base)` … そのモジュールが `include` されたとき。引数は `include` したクラスです。
+    - `Class.inherited(sub)` … そのクラスを継承したクラスが作られたとき（`class Item < Base` の行）。
+
+    `included` の中で `base.extend(ClassMethods)` すると、`include` するだけでクラスメソッドも追加できます。よく使われるパターンです。ほかに `extended`、`prepended`、`method_added` などがあります。
+
+- cat: オブジェクト指向
+  topic: Method オブジェクト
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Greeter
+      def initialize(name) = @name = name
+      def hi(greeting = "Hi") = "#{greeting}, #{@name}"
+    end
+    m = Greeter.new("Ann").method(:hi)
+    p m.arity
+    p m.call("Hey")
+    um = m.unbind
+    p um.bind(Greeter.new("Bob")).call
+  choices: ["-1\n\"Hey, Ann\"\n\"Hi, Bob\"", "1\n\"Hey, Ann\"\n\"Hi, Ann\"", "0\n\"Hey, Ann\"\n\"Hi, Bob\"", "-1\n\"Hey, Ann\"\n\"Hi, Ann\""]
+  answer: [0]
+  verify: output
+  exp: |
+    `method(:名前)` は、レシーバと結び付いた `Method` オブジェクトを返します。`call` で呼べます。
+
+    - `arity` は引数の数です。省略可能な引数がある場合は「−(必須の数 + 1)」なので、必須 0 個なら `-1` です。
+    - `unbind` でレシーバから切り離した `UnboundMethod` にし、`bind` で同じクラスの別のインスタンスに結び付け直せます。`bind(obj).call` は `bind_call(obj)` とも書けます。
+
+- cat: オブジェクト指向
+  topic: Symbol#to_proc と Method#to_proc
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    def double(x) = x * 2
+    p [1, 2, 3].map(&:to_s)
+    p [1, 2, 3].map(&method(:double))
+    p %w[a b].each_with_index.map(&:upcase)
+  choices:
+    - '2行出力された後、`ArgumentError` が発生する'
+    - "`[\"1\", \"2\", \"3\"]`、`[2, 4, 6]`、`[\"A\", \"B\"]` が出力される"
+    - '1行出力された後、`ArgumentError` が発生する'
+    - '2行出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "[\"1\", \"2\", \"3\"]\n[2, 4, 6]", error: ArgumentError}
+  exp: |
+    `&オブジェクト` はオブジェクトの `to_proc` を呼んでブロックとして渡します。
+
+    - `&:to_s` … `Symbol#to_proc` により `{ |x| x.to_s }` と同じです。
+    - `&method(:double)` … `Method#to_proc` により `{ |x| double(x) }` と同じです。
+    - `each_with_index.map(&:upcase)` … ブロックには要素と添字の**2つ**（`"a"` と `0`）が渡されます。`Symbol#to_proc` で作ったブロックは、1つ目をレシーバ、残りを引数にするので `"a".upcase(0)` となり、`upcase` が `0` をオプションとして受け付けず `ArgumentError` です。
+
+    添字付きで変換したいときは `map { |s, i| ... }` とブロック引数を明示します。
+
+- cat: オブジェクト指向
+  topic: freeze と clone / dup
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    s = "abc".freeze
+    p s.clone.frozen?
+    p s.dup.frozen?
+    p s.clone(freeze: false).frozen?
+    a = ["x"].freeze
+    a[0] << "y"
+    p a
+  choices: ["true\nfalse\nfalse\n[\"xy\"]", "true\ntrue\nfalse\n[\"x\"]", "false\nfalse\nfalse\n[\"xy\"]", '!最後の `<<` で `FrozenError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    - `clone` は凍結状態もコピーし、`dup` はコピーしません。`clone(freeze: false)` で凍結しないコピーも作れます。
+    - `freeze` が凍結するのは**そのオブジェクトだけ**です。配列を凍結しても、中の文字列は凍結されません。`a[0] << "y"` は配列ではなく要素の文字列を変えるので、エラーになりません。
+
+    要素まで凍結したいときは `a.each(&:freeze)` のようにそれぞれ `freeze` します。
+
+- cat: オブジェクト指向
+  topic: 特異クラスと継承
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Animal
+      def self.kind = "animal"
+    end
+    class Dog < Animal; end
+    p Dog.kind
+    p Dog.singleton_class.superclass
+    p Dog.singleton_methods
+    p Dog.singleton_methods(false)
+  choices: ["\"animal\"\n#<Class:Animal>\n[:kind]\n[]", "\"animal\"\nAnimal\n[]\n[]", '!`NoMethodError` が発生する', "\"animal\"\n#<Class:Animal>\n[]\n[]"]
+  answer: [0]
+  verify: output
+  exp: |
+    クラスメソッドはクラスの特異クラスに定義されます。`Dog` の特異クラスのスーパークラスは `Animal` の特異クラス（`#<Class:Animal>`）なので、`Dog.kind` は継承されたクラスメソッドとして呼べます。
+
+    `singleton_methods` は既定で、ミックスインや継承で得た特異メソッドも含めます。引数に `false` を渡すと、そのオブジェクト自身に定義したものだけになります。
+
+- cat: オブジェクト指向
+  topic: alias と再定義の順番
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class String
+      alias_method :old_length, :length
+      def length = old_length * 10
+    end
+    p "abc".length
+    p "abc".old_length
+    p "abc".size
+  choices: ["30\n3\n3", "30\n30\n30", "30\n3\n30", '!`SystemStackError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `alias_method :新, :元` は、その時点の `元` の実装を `新` という名前でも呼べるようにします。そのあとで `length` を再定義しても、`old_length` は元の実装のままなので、無限再帰にはなりません。これは既存メソッドを包んで振る舞いを足す古典的な方法です（今は `prepend` + `super` がよく使われます）。
+
+    `size` は `String` の中では `length` と別に定義されているので、再定義の影響を受けません。
+
+- cat: オブジェクト指向
+  topic: undef_method と remove_method
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Parent
+      def hi = "parent"
+    end
+    class A < Parent
+      def hi = "A"
+      remove_method :hi
+    end
+    class B < Parent
+      def hi = "B"
+      undef_method :hi
+    end
+    p A.new.hi
+    p B.new.hi
+  choices:
+    - '`"parent"` が出力された後、`NoMethodError` が発生する'
+    - '`"parent"` が2回出力される'
+    - '1つ目の `A.new.hi` で `NoMethodError` が発生する'
+    - '`"A"` が出力された後、`NoMethodError` が発生する'
+  answer: [0]
+  verify: run
+  expect: {out: "\"parent\"", error: NoMethodError}
+  exp: |
+    - `remove_method` は、そのクラスに定義したメソッドを**取り除く**だけです。探索はスーパークラスへ進むので、`Parent#hi` が呼ばれます。
+    - `undef_method`（キーワードの `undef` も同じ）は、そのクラスでメソッドを**呼べなくする**ので、スーパークラスに同名のメソッドがあっても `NoMethodError` になります。
+
+- cat: オブジェクト指向
+  topic: const_get と const_missing
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Colors
+      RED = "#f00"
+      def self.const_missing(name) = "unknown #{name}"
+    end
+    p Colors.const_get(:RED)
+    p Colors::BLUE
+    p Colors.constants
+    p Colors.const_defined?(:BLUE)
+  choices: ["\"#f00\"\n\"unknown BLUE\"\n[:RED]\nfalse", "\"#f00\"\n\"unknown BLUE\"\n[:RED, :BLUE]\ntrue", '!`NameError` が発生する', "\"#f00\"\nnil\n[:RED]\nfalse"]
+  answer: [0]
+  verify: output
+  exp: |
+    `const_get(名前)` は、名前を指定して定数を取り出します。文字列 `"Colors::RED"` のように `::` を含む名前も使えます。
+
+    未定義の定数を参照すると `const_missing` が呼ばれ、その戻り値が式の値になります。定義していなければ `NameError` です。`const_missing` は値を返しているだけで定数を定義するわけではないので、`constants` や `const_defined?` には現れません。
+
+- cat: オブジェクト指向
+  topic: クラスインスタンス変数とattr_accessor
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Registry
+      @items = []
+      class << self
+        attr_accessor :items
+      end
+    end
+    class Sub < Registry; end
+    Registry.items << :a
+    p Registry.items
+    p Sub.items
+  choices: ["[:a]\nnil", "[:a]\n[:a]", "[:a]\n[]", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    `class << self` の中で `attr_accessor` を使うと、クラスのインスタンス変数 `@items` を読み書きするクラスメソッド `items` / `items=` が作られます。
+
+    クラスのインスタンス変数は**そのクラスオブジェクトだけ**のもので、サブクラスとは共有されません。`Sub` の `@items` は代入されていないので `nil` です（アクセサメソッド自体は継承されます）。クラス変数 `@@items` なら共有されます。
+
+- cat: オブジェクト指向
+  topic: クラス変数の探索
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Base
+      @@count = 0
+      def self.count = @@count
+    end
+    class Child < Base
+      @@count = 5
+    end
+    module Helper
+      def self.peek = defined?(@@count)
+    end
+    p Base.count
+    p Helper.peek
+  choices: ["5\nnil", "0\nnil", "5\n\"class variable\"", '!`NameError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    クラス変数は、親クラスにすでに同名のものがあれば**それを共有**します。`Child` の中の `@@count = 5` は新しい変数を作らず、`Base` の `@@count` を書き換えます。
+
+    クラス変数はレキシカルスコープ（定義が書かれているクラスやモジュール）から探されるので、`Helper` の中からは `Base` の `@@count` は見えません。`defined?` は未定義なら `nil` を返します。
+
+- cat: オブジェクト指向
+  topic: equal? / eql? / ==
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    p 1 == 1.0
+    p 1.eql?(1.0)
+    p "a".equal?("a")
+    h = {1 => :int}
+    p h[1.0]
+  choices: ["true\nfalse\nfalse\nnil", "true\ntrue\nfalse\n:int", "true\nfalse\ntrue\nnil", "false\nfalse\nfalse\nnil"]
+  answer: [0]
+  verify: output
+  exp: |
+    - `==` … 値が等しいか。`1 == 1.0` は `true` です。
+    - `eql?` … 値と**型**が等しいか。`Integer` と `Float` なので `false` です。
+    - `equal?` … 同じオブジェクトか。`"a"` を2回書くと別々の文字列オブジェクトなので `false` です（凍結リテラルでない場合）。
+
+    ハッシュのキーは `hash` と `eql?` で比べるので、`h[1.0]` は `1` のキーに一致せず `nil` です。自作クラスをハッシュのキーにするときは `hash` と `eql?` を両方定義します。
+
+- cat: オブジェクト指向
+  topic: Comparable と clamp
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    class Version
+      include Comparable
+      attr_reader :major, :minor
+      def initialize(s) = (@major, @minor = s.split(".").map(&:to_i))
+      def <=>(other) = [major, minor] <=> [other.major, other.minor]
+      def to_s = "#{major}.#{minor}"
+    end
+    vs = %w[1.10 1.2 2.0].map { Version.new(_1) }
+    puts vs.max
+    puts Version.new("1.5").between?(vs[1], vs[0])
+    puts Version.new("3.0").clamp(vs[1], vs[2])
+  choices: ["2.0\ntrue\n2.0", "1.2\ntrue\n2.0", "2.0\nfalse\n3.0", "1.10\ntrue\n2.0"]
+  answer: [0]
+  verify: output
+  exp: |
+    `<=>` だけを定義して `Comparable` を `include` すると、比較演算子のほかに `between?(min, max)` と `clamp(min, max)` も使えます。また、`<=>` があれば `Enumerable#max` や `sort` でも正しく並びます。
+
+    配列どうしの `<=>` は先頭の要素から順に比べるので、`[1, 10]` は `[1, 2]` より大きくなります（文字列として比べた場合の `"1.10" < "1.2"` とは逆）。`clamp` は範囲の外の値を端の値に丸めます。
+
+- cat: オブジェクト指向
+  topic: Refinementとsuper
+  q: 次のコードを実行するとどうなりますか。
+  code: |
+    module Twice
+      refine Integer do
+        def to_s = super * 2
+      end
+    end
+    using Twice
+    p 12.to_s
+    p "#{12}"
+  choices: ["\"1212\"\n\"1212\"", "\"1212\"\n\"12\"", "\"12\"\n\"12\"", '!`NoMethodError` が発生する']
+  answer: [0]
+  verify: output
+  exp: |
+    refinement の中の `super` は、refine される前の元のメソッド（`Integer#to_s`）を呼びます。`"12" * 2` で `"1212"` です。
+
+    式展開 `"#{12}"` は Ruby の内部で `to_s` を呼びますが、Ruby 2.5 からは式展開にも refinement が効くようになりました。そのため2つ目も `"1212"` です。
+
+    refinement が効くのは `using` を書いたファイル（またはクラス・モジュール定義）の範囲だけで、ほかのファイルの `12.to_s` は元のままです。
